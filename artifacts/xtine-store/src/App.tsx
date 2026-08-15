@@ -226,7 +226,7 @@ function App() {
             className="group flex items-center gap-3"
           >
             <Grip size={22} className="text-[#a0a0b8] transition-colors group-hover:text-white" />
-            <span className="font-display text-[19px] font-extrabold tracking-[-.03em] text-white">XTINE</span>
+            <span className="font-display text-[19px] font-extrabold tracking-[-.03em] text-white">Xtine<span className="text-[#6C5CE7]">Cheats</span></span>
           </button>
 
           {/* Desktop nav */}
@@ -425,8 +425,8 @@ function App() {
               <div className="flex items-start gap-5 relative z-10">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#13131e] border border-[#1e1e2e] text-[#6C5CE7]"><ShoppingBag size={22} strokeWidth={2.5} /></div>
                 <div>
-                  <h4 className="font-bold text-white text-[15px] mb-1.5 tracking-tight">70,000+ products sold</h4>
-                  <p className="text-[#5a5a72] text-[13px] leading-relaxed">Wide variety of products and over 70,000 products sold!</p>
+                  <h4 className="font-bold text-white text-[15px] mb-1.5 tracking-tight">Trusted since 2025</h4>
+                  <p className="text-[#5a5a72] text-[13px] leading-relaxed">Established and trusted by thousands of players since day one.</p>
                 </div>
               </div>
               <div className="hidden lg:block absolute left-1/4 top-1/2 -translate-y-1/2 h-20 w-px bg-[#1e1e2e]" />
@@ -531,7 +531,7 @@ function App() {
         <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-6 px-5 sm:flex-row lg:px-10">
           <div className="flex items-center gap-3">
             <Grip size={20} className="text-[#a0a0b8]" />
-            <span className="font-display font-extrabold tracking-tight text-white text-[16px]">XTINE</span>
+            <span className="font-display font-extrabold tracking-tight text-white text-[16px]">Xtine<span className="text-[#6C5CE7]">Cheats</span></span>
           </div>
           <p className="text-[13px] text-[#5a5a72] font-medium">© 2025 Xtine Store. All rights reserved.</p>
           <div className="flex gap-6">

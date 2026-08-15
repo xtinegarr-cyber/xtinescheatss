@@ -101,7 +101,7 @@ export default function AdminPanel({ products, onSave, onClose }: AdminPanelProp
             </button>
           )}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#6C5CE7]">Xtine Admin</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#6C5CE7]">XtineCheats Admin</p>
             <h1 className="text-[18px] font-extrabold tracking-tight">
               {view === 'list' ? 'Product Manager' : editing?.id && products.find(p => p.id === editing.id) ? 'Edit Product' : 'New Product'}
             </h1>
