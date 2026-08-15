@@ -86,6 +86,20 @@
   to { opacity: 1; transform: translateY(0); } 
 }
 
+.auth-input {
+  width: 100%;
+  background: #13131e;
+  border: 1px solid #1e1e2e;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  font-size: 14px;
+  color: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.auth-input:focus { border-color: #6C5CE7; }
+.auth-input::placeholder { color: #5a5a72; }
+
 .admin-input {
   width: 100%;
   background: #13131e;
