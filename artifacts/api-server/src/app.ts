@@ -27,7 +27,7 @@ app.use(
   }),
 );
 
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 
 // ── Stripe webhook MUST be registered before express.json() ──────────────────
 // Stripe sends raw Buffer bodies; express.json() would parse it and break

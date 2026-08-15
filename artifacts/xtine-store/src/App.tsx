@@ -887,6 +887,7 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
       const { url } = await createStripeCheckoutSession(items);
       window.location.href = url;
     } catch (err) {
+      console.error('[Stripe] checkout error:', err);
       setStripeError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setStripeLoading(false);
     }
