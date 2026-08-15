@@ -43,6 +43,7 @@ import {
   type AuthUser,
   type Order,
 } from './auth';
+import { createStripeCheckoutSession } from './stripe';
 import type { CartEntry, Product } from './types';
 
 const wallets: Record<string, string> = {
@@ -171,6 +172,12 @@ function App() {
   const [txRef, setTxRef] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Detect Stripe success redirect (?payment_success=true)
+  const [stripeSuccess, setStripeSuccess] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('payment_success') === 'true';
+  });
 
   const copyWallet = async () => {
     try { await navigator.clipboard.writeText(wallets[payment]); } catch { /* ignore */ }
@@ -574,6 +581,41 @@ function App() {
         />
       )}
 
+      {/* Stripe payment success overlay */}
+      {stripeSuccess && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#09090f]/90 p-5 backdrop-blur-md">
+          <div className="w-full max-w-[500px] rounded-2xl border border-[#1e1e2e] bg-[#0f0f18] p-8 text-center sm:p-12 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#6C5CE7] to-[#8B7CF8]" />
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#6C5CE7]/10 text-[#6C5CE7] border border-[#6C5CE7]/20 mb-6">
+              <Check size={36} strokeWidth={2.5} />
+            </div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-[#6C5CE7] mb-2">Payment Confirmed</p>
+            <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight">You're all set.</h2>
+            <p className="text-[14px] text-[#a0a0b8] mb-8 font-medium leading-relaxed max-w-[360px] mx-auto">
+              Your card payment went through. We'll process your order and send delivery details shortly.
+            </p>
+            <div className="rounded-xl border border-[#1e1e2e] bg-[#13131e] p-5 text-left mb-8">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#5a5a72] mb-4">What happens next</p>
+              <div className="space-y-3 text-[13px] text-[#a0a0b8] font-medium">
+                <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#6C5CE7]/20 text-[#8B7CF8] text-[11px] font-bold">1</span><span>Payment verified by Stripe</span></div>
+                <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#6C5CE7]/20 text-[#8B7CF8] text-[11px] font-bold">2</span><span>Order queued for fulfillment</span></div>
+                <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#6C5CE7]/20 text-[#8B7CF8] text-[11px] font-bold">3</span><span>Delivery details sent to your email</span></div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setStripeSuccess(false);
+                setCart({});
+                window.history.replaceState({}, '', window.location.pathname);
+              }}
+              className="w-full rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-colors hover:bg-[#7B6FF0]"
+            >
+              Back to Store
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Auth modals */}
       {authModal === 'login' && (
         <LoginModal
@@ -828,6 +870,29 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
   txRef: string; setTxRef: (v: string) => void; copied: boolean;
   copyWallet: () => void; submitted: boolean; onClose: () => void; onSubmit: () => void;
 }) {
+  const [method, setMethod] = useState<'stripe' | 'crypto'>('stripe');
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [stripeError, setStripeError] = useState('');
+
+  const handleStripePay = async () => {
+    setStripeError('');
+    setStripeLoading(true);
+    try {
+      const items = cartProducts.map(({ product, entry }) => ({
+        name: product.name,
+        duration: product.durations[entry.durationIndex]?.label ?? '',
+        price: product.durations[entry.durationIndex]?.price ?? 0,
+        qty: entry.qty,
+      }));
+      const { url } = await createStripeCheckoutSession(items);
+      window.location.href = url;
+    } catch (err) {
+      setStripeError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setStripeLoading(false);
+    }
+  };
+
+  // ── Crypto submitted success screen ─────────────────────────────────────
   if (submitted) {
     return (
       <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#09090f]/90 p-5 backdrop-blur-md">
@@ -836,12 +901,12 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#6C5CE7]/10 text-[#6C5CE7] border border-[#6C5CE7]/20 mb-6"><Check size={36} strokeWidth={2.5} /></div>
           <p className="text-[11px] font-bold uppercase tracking-wider text-[#6C5CE7] mb-2">Reference Received</p>
           <h2 className="text-3xl font-extrabold text-white mb-4 tracking-tight">You're in the queue.</h2>
-          <p className="text-[14px] text-[#a0a0b8] mb-8 font-medium leading-relaxed max-w-[360px] mx-auto">We'll review your transaction and send delivery details to your inbox. Most reviews land within 20 minutes.</p>
+          <p className="text-[14px] text-[#a0a0b8] mb-8 font-medium leading-relaxed max-w-[360px] mx-auto">We'll match your transaction and send delivery details to your inbox. Most reviews land within 20 minutes.</p>
           <div className="rounded-xl border border-[#1e1e2e] bg-[#13131e] p-5 text-left mb-8">
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#5a5a72] mb-4">What happens next</p>
             <div className="space-y-4 text-[13px] text-[#a0a0b8] font-medium">
-              <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#1e1e2e] text-white text-[11px] font-bold">1</span> <span>Transaction matched against your order</span></div>
-              <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#1e1e2e] text-white text-[11px] font-bold">2</span> <span>Delivery details sent by email</span></div>
+              <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#1e1e2e] text-white text-[11px] font-bold">1</span><span>Transaction matched against your order</span></div>
+              <div className="flex items-center gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#1e1e2e] text-white text-[11px] font-bold">2</span><span>Delivery details sent by email</span></div>
             </div>
           </div>
           <button onClick={onClose} className="w-full rounded-xl bg-[#1e1e2e] py-4 text-[14px] font-bold text-white transition-colors hover:bg-[#2a2a3a]">Return to Store</button>
@@ -852,42 +917,93 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#09090f]/90 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-[540px] overflow-hidden rounded-2xl border border-[#1e1e2e] bg-[#0f0f18] shadow-2xl">
+      <div className="relative w-full max-w-[560px] overflow-hidden rounded-2xl border border-[#1e1e2e] bg-[#0f0f18] shadow-2xl">
+        {/* Header */}
         <div className="border-b border-[#1e1e2e] px-7 py-5 flex items-center justify-between bg-[#0c0c16]">
-          <h2 className="text-[18px] font-extrabold text-white tracking-tight">Checkout Review</h2>
+          <h2 className="text-[18px] font-extrabold text-white tracking-tight">Checkout</h2>
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-[#13131e] border border-[#1e1e2e] text-[#a0a0b8] hover:text-white transition-colors"><X size={16} /></button>
         </div>
+
         <div className="p-7">
-          <div className="mb-7 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-5 flex items-center justify-between">
+          {/* Amount */}
+          <div className="mb-6 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-4 flex items-center justify-between">
             <span className="text-[13px] font-bold uppercase tracking-wider text-[#5a5a72]">Amount Due</span>
             <span className="text-2xl font-extrabold text-[#8B7CF8]">${subtotal.toFixed(2)} USD</span>
           </div>
-          <div className="space-y-6">
-            <div>
-              <label className="text-[13px] font-bold text-white block mb-3">Select Cryptocurrency</label>
-              <div className="grid grid-cols-4 gap-3">
-                {['BTC', 'LTC', 'ETH', 'SOL'].map((coin) => (
-                  <button key={coin} onClick={() => setPayment(coin)} className={`rounded-lg border py-3 text-[13px] font-bold transition-all ${payment === coin ? 'border-[#6C5CE7] bg-[#6C5CE7] text-white shadow-[0_0_15px_rgba(108,92,231,0.2)]' : 'border-[#1e1e2e] bg-[#13131e] text-[#a0a0b8] hover:border-[#3a3a4a] hover:text-white'}`}>{coin}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="text-[13px] font-bold text-white block mb-3">Send to Address</label>
-              <div className="flex items-center gap-2 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-1.5 transition-colors">
-                <input readOnly value={wallets[payment]} className="flex-1 bg-transparent px-3 text-[14px] font-medium text-white outline-none" />
-                <button onClick={copyWallet} className="flex h-10 items-center gap-2 rounded-lg bg-[#1e1e2e] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[#2a2a3a]">
-                  {copied ? <Check size={14} className="text-[#00d4aa]" /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="text-[13px] font-bold text-white block mb-3">Transaction Hash / Reference</label>
-              <input value={txRef} onChange={(e) => setTxRef(e.target.value)} placeholder="Paste your tx hash here..." className="w-full rounded-xl border border-[#1e1e2e] bg-[#13131e] px-5 py-3.5 text-[14px] text-white outline-none focus:border-[#6C5CE7] transition-colors placeholder:text-[#5a5a72] font-medium" />
-            </div>
+
+          {/* Payment method tabs */}
+          <div className="mb-6 flex gap-2 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-1">
+            <button
+              onClick={() => setMethod('stripe')}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all ${method === 'stripe' ? 'bg-[#6C5CE7] text-white shadow-[0_0_12px_rgba(108,92,231,0.25)]' : 'text-[#a0a0b8] hover:text-white'}`}
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/></svg>
+              Card (Stripe)
+            </button>
+            <button
+              onClick={() => setMethod('crypto')}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-bold transition-all ${method === 'crypto' ? 'bg-[#1e1e2e] text-white' : 'text-[#a0a0b8] hover:text-white'}`}
+            >
+              ₿ Crypto
+            </button>
           </div>
-          <button disabled={!txRef} onClick={onSubmit} className="mt-8 flex w-full items-center justify-center rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
-            Submit Payment Reference
-          </button>
+
+          {/* Stripe tab */}
+          {method === 'stripe' && (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[#6C5CE7]/20 bg-[#6C5CE7]/5 p-5">
+                <p className="text-[13px] font-semibold text-[#a0a0b8] leading-relaxed">
+                  You'll be taken to Stripe's secure checkout page to enter your card details. After payment you'll be redirected back automatically.
+                </p>
+              </div>
+              {stripeError && (
+                <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-[13px] text-red-400">{stripeError}</p>
+              )}
+              <button
+                onClick={handleStripePay}
+                disabled={stripeLoading}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {stripeLoading ? (
+                  <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> Connecting to Stripe…</>
+                ) : (
+                  <><svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/></svg> Pay ${subtotal.toFixed(2)} with Stripe</>
+                )}
+              </button>
+              <p className="text-center text-[11px] font-medium text-[#5a5a72]">Secured by Stripe · All major cards accepted</p>
+            </div>
+          )}
+
+          {/* Crypto tab */}
+          {method === 'crypto' && (
+            <div className="space-y-5">
+              <div>
+                <label className="text-[13px] font-bold text-white block mb-3">Select Cryptocurrency</label>
+                <div className="grid grid-cols-4 gap-3">
+                  {['BTC', 'LTC', 'ETH', 'SOL'].map((coin) => (
+                    <button key={coin} onClick={() => setPayment(coin)} className={`rounded-lg border py-3 text-[13px] font-bold transition-all ${payment === coin ? 'border-[#6C5CE7] bg-[#6C5CE7] text-white shadow-[0_0_15px_rgba(108,92,231,0.2)]' : 'border-[#1e1e2e] bg-[#13131e] text-[#a0a0b8] hover:border-[#3a3a4a] hover:text-white'}`}>{coin}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-white block mb-3">Send to Address</label>
+                <div className="flex items-center gap-2 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-1.5">
+                  <input readOnly value={wallets[payment]} className="flex-1 bg-transparent px-3 text-[13px] font-medium text-white outline-none" />
+                  <button onClick={copyWallet} className="flex h-10 items-center gap-2 rounded-lg bg-[#1e1e2e] px-4 text-[12px] font-bold text-white transition-colors hover:bg-[#2a2a3a]">
+                    {copied ? <Check size={14} className="text-[#00d4aa]" /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-[13px] font-bold text-white block mb-3">Transaction Hash / Reference</label>
+                <input value={txRef} onChange={(e) => setTxRef(e.target.value)} placeholder="Paste your tx hash here..." className="w-full rounded-xl border border-[#1e1e2e] bg-[#13131e] px-5 py-3.5 text-[14px] text-white outline-none focus:border-[#6C5CE7] transition-colors placeholder:text-[#5a5a72] font-medium" />
+              </div>
+              <button disabled={!txRef} onClick={onSubmit} className="flex w-full items-center justify-center rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
+                Submit Payment Reference
+              </button>
+              <p className="text-center text-[11px] font-medium text-[#5a5a72]">Manual review · Delivery confirmed after verification</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { handleStripeWebhook } from "./routes/checkout";
 
 const app: Express = express();
 
@@ -25,7 +26,19 @@ app.use(
     },
   }),
 );
+
 app.use(cors());
+
+// ── Stripe webhook MUST be registered before express.json() ──────────────────
+// Stripe sends raw Buffer bodies; express.json() would parse it and break
+// signature verification.
+app.post(
+  "/api/checkout/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook,
+);
+
+// ── Standard middleware for all other routes ──────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
