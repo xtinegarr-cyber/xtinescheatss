@@ -3,9 +3,12 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ClipboardList,
+  Copy,
   Eye,
   EyeOff,
   GripVertical,
+  Package,
   Pencil,
   Plus,
   Save,
@@ -13,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import type { DurationOption, FeatureGroup, Product } from './types';
+import { getAllOrders, updateOrderStatus, type AdminOrder } from './auth';
 
 const DURATION_LABELS = ['1 Day', '3 Days', '7 Days', '30 Days'];
 const DURATION_DAYS = [1, 3, 7, 30];
@@ -45,13 +49,16 @@ type AdminPanelProps = {
   onClose: () => void;
 };
 
-type View = 'list' | 'edit';
+type View = 'list' | 'edit' | 'orders';
 
 export default function AdminPanel({ products, onSave, onClose }: AdminPanelProps) {
   const [draft, setDraft] = useState<Product[]>(products);
   const [view, setView] = useState<View>('list');
   const [editing, setEditing] = useState<Product | null>(null);
   const [saved, setSaved] = useState(false);
+  const [orders, setOrders] = useState<AdminOrder[]>(() => getAllOrders());
+
+  const refreshOrders = () => setOrders(getAllOrders());
 
   const save = () => {
     onSave(draft);
@@ -87,6 +94,13 @@ export default function AdminPanel({ products, onSave, onClose }: AdminPanelProp
     setDraft((prev) => prev.map((p) => (p.id === id ? { ...p, listed: !p.listed } : p)));
   };
 
+  const handleConfirmOrder = (username: string, orderId: string) => {
+    updateOrderStatus(username, orderId, 'Confirmed');
+    refreshOrders();
+  };
+
+  const pendingCount = orders.filter((o) => o.status === 'Pending review').length;
+
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-[#09090f] text-white">
       {/* Header */}
@@ -103,39 +117,49 @@ export default function AdminPanel({ products, onSave, onClose }: AdminPanelProp
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#6C5CE7]">XtineCheats Admin</p>
             <h1 className="text-[18px] font-extrabold tracking-tight">
-              {view === 'list' ? 'Product Manager' : editing?.id && products.find(p => p.id === editing.id) ? 'Edit Product' : 'New Product'}
+              {view === 'orders' ? 'Orders' : view === 'list' ? 'Products' : editing?.id && products.find(p => p.id === editing.id) ? 'Edit Product' : 'New Product'}
             </h1>
           </div>
         </div>
+
         <div className="flex items-center gap-3">
-          {view === 'list' && (
-            <>
+          {/* Tab switcher */}
+          {(view === 'list' || view === 'orders') && (
+            <div className="flex rounded-lg border border-[#1e1e2e] bg-[#13131e] p-0.5">
               <button
-                onClick={openNew}
-                className="flex items-center gap-2 rounded-lg bg-[#1e1e2e] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#2a2a3a] transition-colors"
+                onClick={() => setView('list')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-bold transition-all ${view === 'list' ? 'bg-[#1e1e2e] text-white' : 'text-[#5a5a72] hover:text-white'}`}
               >
-                <Plus size={14} /> New Product
+                <Package size={13} /> Products
               </button>
               <button
-                onClick={save}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-bold transition-all ${saved ? 'bg-[#00d4aa]/20 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-[#6C5CE7] text-white hover:bg-[#7B6FF0]'}`}
+                onClick={() => { setView('orders'); refreshOrders(); }}
+                className={`relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-bold transition-all ${view === 'orders' ? 'bg-[#1e1e2e] text-white' : 'text-[#5a5a72] hover:text-white'}`}
               >
+                <ClipboardList size={13} /> Orders
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#6C5CE7] text-[9px] font-extrabold text-white">{pendingCount}</span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {view === 'list' && (
+            <>
+              <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-[#1e1e2e] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#2a2a3a] transition-colors">
+                <Plus size={14} /> New Product
+              </button>
+              <button onClick={save} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[13px] font-bold transition-all ${saved ? 'bg-[#00d4aa]/20 text-[#00d4aa] border border-[#00d4aa]/30' : 'bg-[#6C5CE7] text-white hover:bg-[#7B6FF0]'}`}>
                 {saved ? <><Check size={14} /> Saved</> : <><Save size={14} /> Save All</>}
               </button>
             </>
           )}
           {view === 'edit' && (
-            <button
-              onClick={saveEdit}
-              className="flex items-center gap-2 rounded-lg bg-[#6C5CE7] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#7B6FF0] transition-colors"
-            >
+            <button onClick={saveEdit} className="flex items-center gap-2 rounded-lg bg-[#6C5CE7] px-4 py-2 text-[13px] font-bold text-white hover:bg-[#7B6FF0] transition-colors">
               <Save size={14} /> Apply Changes
             </button>
           )}
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e1e2e] bg-[#13131e] text-[#a0a0b8] hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#1e1e2e] bg-[#13131e] text-[#a0a0b8] hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -152,6 +176,9 @@ export default function AdminPanel({ products, onSave, onClose }: AdminPanelProp
         )}
         {view === 'edit' && editing && (
           <ProductEditor product={editing} onChange={setEditing} />
+        )}
+        {view === 'orders' && (
+          <OrdersView orders={orders} onConfirm={handleConfirmOrder} />
         )}
       </div>
     </div>
@@ -461,6 +488,174 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">{label}</label>
       {children}
+    </div>
+  );
+}
+
+// ── ORDERS VIEW ───────────────────────────────────────────────────────────────
+
+function OrdersView({
+  orders,
+  onConfirm,
+}: {
+  orders: AdminOrder[];
+  onConfirm: (username: string, orderId: string) => void;
+}) {
+  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
+  const [copied, setCopied] = useState('');
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const copyText = (text: string, key: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(key);
+    setTimeout(() => setCopied(''), 1800);
+  };
+
+  const visible = orders.filter((o) =>
+    filter === 'all' ? true : filter === 'pending' ? o.status === 'Pending review' : o.status === 'Confirmed'
+  );
+
+  const pending = orders.filter((o) => o.status === 'Pending review').length;
+  const confirmed = orders.filter((o) => o.status === 'Confirmed').length;
+
+  return (
+    <div className="mx-auto max-w-[900px] px-6 py-8">
+      {/* Stats strip */}
+      <div className="mb-6 grid grid-cols-3 gap-4">
+        {[
+          { label: 'Total Orders', value: orders.length },
+          { label: 'Pending Review', value: pending, highlight: pending > 0 },
+          { label: 'Confirmed', value: confirmed },
+        ].map(({ label, value, highlight }) => (
+          <div key={label} className={`rounded-xl border p-5 text-center ${highlight ? 'border-[#6C5CE7]/40 bg-[#6C5CE7]/10' : 'border-[#1e1e2e] bg-[#0f0f18]'}`}>
+            <p className={`text-3xl font-extrabold ${highlight ? 'text-[#8B7CF8]' : 'text-white'}`}>{value}</p>
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div className="mb-5 flex gap-2">
+        {(['all', 'pending', 'confirmed'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`rounded-lg px-4 py-2 text-[12px] font-bold capitalize transition-all ${filter === f ? 'bg-[#6C5CE7] text-white' : 'bg-[#13131e] border border-[#1e1e2e] text-[#a0a0b8] hover:text-white'}`}
+          >
+            {f === 'all' ? `All (${orders.length})` : f === 'pending' ? `Pending (${pending})` : `Confirmed (${confirmed})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Order list */}
+      {visible.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#1e1e2e] bg-[#0f0f18] py-24 text-center">
+          <ClipboardList className="mx-auto mb-4 text-[#3a3a4a]" size={32} />
+          <p className="text-[15px] font-bold text-white">No orders yet</p>
+          <p className="mt-2 text-[13px] text-[#5a5a72]">Orders placed by customers will appear here.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((order) => {
+            const isExpanded = expanded === order.id;
+            const isPending = order.status === 'Pending review';
+            const date = new Date(order.date);
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+            return (
+              <div key={order.id} className={`rounded-xl border transition-all ${isPending ? 'border-[#6C5CE7]/30 bg-[#0f0f18]' : 'border-[#1e1e2e] bg-[#0f0f18]'}`}>
+                {/* Row summary */}
+                <div
+                  className="flex cursor-pointer items-center gap-4 px-5 py-4"
+                  onClick={() => setExpanded(isExpanded ? null : order.id)}
+                >
+                  {/* Status dot */}
+                  <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${isPending ? 'bg-[#6C5CE7] shadow-[0_0_6px_rgba(108,92,231,0.6)]' : 'bg-[#00d4aa]'}`} />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-[13px] font-extrabold text-white">{order.id}</span>
+                      <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isPending ? 'bg-[#6C5CE7]/20 text-[#8B7CF8]' : 'bg-[#00d4aa]/10 text-[#00d4aa]'}`}>{order.status}</span>
+                      <span className="text-[12px] font-medium text-[#5a5a72]">{order.payment}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-3 text-[12px] text-[#5a5a72]">
+                      <span className="font-semibold text-[#a0a0b8]">@{order.username}</span>
+                      <span>·</span>
+                      <span>{dateStr} {timeStr}</span>
+                      <span>·</span>
+                      <span className="font-bold text-white">${order.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isPending && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onConfirm(order.username, order.id); }}
+                        className="flex items-center gap-1.5 rounded-lg bg-[#00d4aa]/10 border border-[#00d4aa]/30 px-3 py-1.5 text-[11px] font-bold text-[#00d4aa] hover:bg-[#00d4aa]/20 transition-colors"
+                      >
+                        <Check size={11} /> Confirm
+                      </button>
+                    )}
+                    <ChevronDown size={16} className={`text-[#5a5a72] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="border-t border-[#1e1e2e] px-5 py-5 space-y-4">
+                    {/* Items */}
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#5a5a72]">Items Ordered</p>
+                      <div className="space-y-2">
+                        {order.items.map((item, i) => (
+                          <div key={i} className="flex items-center justify-between rounded-lg bg-[#13131e] px-4 py-2.5">
+                            <div>
+                              <p className="text-[13px] font-bold text-white">{item.productName}</p>
+                              <p className="text-[11px] text-[#6C5CE7] font-semibold">{item.duration}</p>
+                            </div>
+                            <p className="text-[13px] font-extrabold text-[#8B7CF8]">${item.price.toFixed(2)}</p>
+                          </div>
+                        ))}
+                        <div className="flex justify-between px-4 pt-1">
+                          <span className="text-[12px] font-bold text-[#5a5a72]">Total</span>
+                          <span className="text-[14px] font-extrabold text-white">${order.total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* TX hash */}
+                    {order.txRef && (
+                      <div>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#5a5a72]">Transaction Hash</p>
+                        <div className="flex items-center gap-2 rounded-lg border border-[#1e1e2e] bg-[#13131e] px-4 py-2.5">
+                          <span className="flex-1 break-all text-[12px] font-mono text-white">{order.txRef}</span>
+                          <button
+                            onClick={() => copyText(order.txRef, order.id + '-tx')}
+                            className="shrink-0 flex items-center gap-1 rounded-md bg-[#1e1e2e] px-2.5 py-1.5 text-[11px] font-bold text-[#a0a0b8] hover:text-white transition-colors"
+                          >
+                            {copied === order.id + '-tx' ? <><Check size={11} className="text-[#00d4aa]" /> Copied</> : <><Copy size={11} /> Copy</>}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    {isPending && (
+                      <button
+                        onClick={() => onConfirm(order.username, order.id)}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00d4aa]/10 border border-[#00d4aa]/30 py-3 text-[13px] font-bold text-[#00d4aa] hover:bg-[#00d4aa]/20 transition-colors"
+                      >
+                        <Check size={14} /> Mark as Confirmed & Delivered
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

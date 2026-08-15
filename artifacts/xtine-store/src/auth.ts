@@ -158,3 +158,41 @@ export function saveOrder(username: string, order: Order): void {
 export function generateOrderId(): string {
   return `XTC-${Date.now().toString(36).toUpperCase()}`;
 }
+
+// ─── Admin helpers ────────────────────────────────────────────────────────────
+
+export type AdminOrder = Order & { username: string };
+
+/** Returns every order from every user, newest first. */
+export function getAllOrders(): AdminOrder[] {
+  const users = getStoredUsers();
+  const all: AdminOrder[] = [];
+  for (const user of users) {
+    for (const order of user.orders) {
+      all.push({ ...order, username: user.username });
+    }
+  }
+  return all.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
+/** Update the status of a specific order for a given user. */
+export function updateOrderStatus(
+  username: string,
+  orderId: string,
+  status: Order['status']
+): void {
+  const users = getStoredUsers();
+  const updated = users.map((u) =>
+    u.username.toLowerCase() === username.toLowerCase()
+      ? {
+          ...u,
+          orders: u.orders.map((o) =>
+            o.id === orderId ? { ...o, status } : o
+          ),
+        }
+      : u
+  );
+  saveStoredUsers(updated);
+}
