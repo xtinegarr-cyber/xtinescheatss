@@ -378,17 +378,59 @@ function ProductEditor({ product, onChange }: { product: Product; onChange: (p: 
       {/* Image */}
       <section>
         <h2 className="mb-4 text-[11px] font-bold uppercase tracking-widest text-[#6C5CE7]">Product Image</h2>
-        <Field label="Image URL">
-          <input value={product.image} onChange={e => set('image', e.target.value)} className="admin-input" placeholder="https://example.com/image.png" />
-        </Field>
-        {product.image && (
-          <div className="mt-3 h-40 w-40 overflow-hidden rounded-xl border border-[#1e1e2e]">
-            <img src={product.image} alt="Preview" className="h-full w-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
-          </div>
-        )}
-        {!product.image && (
-          <p className="mt-2 text-[12px] text-[#5a5a72]">Paste an image URL above to show a custom image on the product card and detail view.</p>
-        )}
+        <div className="flex gap-5 items-start flex-wrap">
+          {/* Upload button */}
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#2a2a3a] bg-[#13131e] px-8 py-6 text-center transition-colors hover:border-[#6C5CE7]/50 hover:bg-[#6C5CE7]/5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e1e2e] text-[#6C5CE7]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-white">Upload Image</p>
+              <p className="text-[11px] text-[#5a5a72]">PNG, JPG, WEBP · max 4MB</p>
+            </div>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 4 * 1024 * 1024) { alert('Image must be under 4MB'); return; }
+                const reader = new FileReader();
+                reader.onload = () => set('image', reader.result as string);
+                reader.readAsDataURL(file);
+              }}
+            />
+          </label>
+
+          {/* Preview or placeholder */}
+          {product.image ? (
+            <div className="relative h-40 w-40 overflow-hidden rounded-xl border border-[#1e1e2e]">
+              <img src={product.image} alt="Preview" className="h-full w-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+              <button
+                onClick={() => set('image', '')}
+                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#09090f]/80 text-white hover:bg-red-500/80 transition-colors"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-[#1e1e2e] bg-[#0f0f18] text-[#3a3a4a]">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+          )}
+        </div>
+
+        {/* URL fallback */}
+        <div className="mt-4">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#3a3a4a]">Or paste a URL</p>
+          <input
+            value={product.image.startsWith('data:') ? '' : product.image}
+            onChange={e => set('image', e.target.value)}
+            className="admin-input"
+            placeholder="https://example.com/image.png"
+          />
+        </div>
       </section>
 
       {/* Duration pricing */}

@@ -112,9 +112,15 @@ function App() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Product | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
 
   const listedProducts = useMemo(() => products.filter((p) => p.listed), [products]);
+
+  const gameNames = useMemo(
+    () => [...new Set(listedProducts.map((p) => p.game).filter(Boolean))],
+    [listedProducts]
+  );
   const visibleProducts = useMemo(() => {
     const normalized = query.toLowerCase().trim();
     return listedProducts.filter((p) => {
@@ -239,13 +245,40 @@ function App() {
           {/* Desktop nav */}
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#a0a0b8] lg:flex">
             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="text-white">Home</button>
-            <button className="flex items-center gap-1.5 transition-colors hover:text-white">Games <ChevronDown size={14} className="text-[#5a5a72]" /></button>
-            <button className="transition-colors hover:text-white">Status</button>
-            <button className="transition-colors hover:text-white">Reviews</button>
+
+            {/* Games dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setGamesOpen((v) => !v)}
+                onBlur={() => setTimeout(() => setGamesOpen(false), 150)}
+                className="flex items-center gap-1.5 transition-colors hover:text-white"
+              >
+                Games <ChevronDown size={14} className={`text-[#5a5a72] transition-transform ${gamesOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {gamesOpen && gameNames.length > 0 && (
+                <div className="absolute left-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-xl border border-[#1e1e2e] bg-[#0f0f18] shadow-2xl">
+                  {gameNames.map((game) => (
+                    <button
+                      key={game}
+                      onMouseDown={() => {
+                        setQuery(game);
+                        setCategory('Featured');
+                        scrollToCatalog();
+                        setGamesOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-semibold text-[#a0a0b8] transition-colors hover:bg-[#1e1e2e] hover:text-white"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#6C5CE7]" />
+                      {game}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button onClick={scrollToCatalog} className="transition-colors hover:text-white">Products</button>
             <button className="transition-colors hover:text-white">Discord</button>
             <button onClick={() => document.getElementById('trust')?.scrollIntoView({ behavior: 'smooth' })} className="transition-colors hover:text-white">Contact Us</button>
-            <button className="flex items-center gap-1.5 transition-colors hover:text-white">More <ChevronDown size={14} className="text-[#5a5a72]" /></button>
           </nav>
 
           {/* Right side */}
@@ -351,7 +384,21 @@ function App() {
           <nav className="absolute w-full border-b border-[#1e1e2e] bg-[#0f0f18] px-5 py-5 shadow-xl lg:hidden z-40">
             <div className="flex flex-col gap-4 text-[14px] font-semibold text-[#a0a0b8]">
               <button onClick={() => { scrollToCatalog(); setMobileNav(false); }} className="text-left transition-colors hover:text-white">Products</button>
-              <button onClick={() => { setCategory('Services'); scrollToCatalog(); setMobileNav(false); }} className="text-left transition-colors hover:text-white">Services</button>
+              {/* Games list on mobile */}
+              {gameNames.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">Games</p>
+                  {gameNames.map((game) => (
+                    <button
+                      key={game}
+                      onClick={() => { setQuery(game); setCategory('Featured'); scrollToCatalog(); setMobileNav(false); }}
+                      className="flex items-center gap-2 text-left text-[13px] text-[#a0a0b8] transition-colors hover:text-white"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#6C5CE7]" />{game}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button onClick={() => { document.getElementById('trust')?.scrollIntoView({ behavior: 'smooth' }); setMobileNav(false); }} className="text-left transition-colors hover:text-white">Contact Us</button>
 
               <div className="pt-2 border-t border-[#1e1e2e]">
