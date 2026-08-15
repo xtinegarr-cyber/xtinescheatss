@@ -85,3 +85,18 @@
   from { opacity: 0; transform: translateY(14px); } 
   to { opacity: 1; transform: translateY(0); } 
 }
+
+.admin-input {
+  width: 100%;
+  background: #13131e;
+  border: 1px solid #1e1e2e;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 13px;
+  color: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.admin-input:focus { border-color: #6C5CE7; }
+.admin-input option { background: #13131e; }
+.admin-input::placeholder { color: #5a5a72; }
