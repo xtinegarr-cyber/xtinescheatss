@@ -19,16 +19,30 @@ export async function createStripeCheckoutSession(
   const successUrl = `${origin}${base}/?payment_success=true&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${origin}${base}/`;
 
-  const res = await fetch(`${API_BASE}/api/checkout/create-session`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items, successUrl, cancelUrl }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error((err as { error?: string }).error ?? 'Checkout failed');
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/checkout/create-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, successUrl, cancelUrl }),
+    });
+  } catch {
+    throw new Error('Could not reach the payment server. Check your internet connection and try again.');
   }
 
-  return res.json() as Promise<{ url: string }>;
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    let message = `Payment server error (HTTP ${res.status}). Make sure STRIPE_SECRET_KEY is set on the server.`;
+    try {
+      const parsed = JSON.parse(body) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch { /* body wasn't JSON — keep the status message */ }
+    throw new Error(message);
+  }
+
+  const data = await res.json() as { url?: string | null };
+  if (!data.url) {
+    throw new Error('Stripe did not return a checkout URL. Verify your Stripe keys are valid live-mode keys.');
+  }
+  return { url: data.url };
 }
