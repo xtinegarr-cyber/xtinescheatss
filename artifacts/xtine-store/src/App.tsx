@@ -885,7 +885,13 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
         qty: entry.qty,
       }));
       const { url } = await createStripeCheckoutSession(items);
-      window.location.href = url;
+      // Navigate the top-level window so Stripe's checkout page
+      // isn't blocked by X-Frame-Options inside an iframe (e.g. Replit preview).
+      if (window.top && window.top !== window) {
+        window.top.location.href = url;
+      } else {
+        window.location.href = url;
+      }
     } catch (err) {
       console.error('[Stripe] checkout error:', err);
       setStripeError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
