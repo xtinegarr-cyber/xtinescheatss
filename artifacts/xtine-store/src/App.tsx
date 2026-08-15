@@ -47,10 +47,10 @@ import { createStripeCheckoutSession } from './stripe';
 import type { CartEntry, Product } from './types';
 
 const wallets: Record<string, string> = {
-  BTC: 'bc1q-xtine-review-7m4k-8w2p',
-  LTC: 'ltc1q-xtine-review-3t6v-1n9x',
-  ETH: '0xXtineReviewWallet8c4e',
-  SOL: 'XtineReview9Qh4m2K7p',
+  BTC: 'bc1qskwe5la2nxuw3h3vxl4zjszua2jmewhhnz20r0',
+  LTC: 'LLe1ZLMUmwJ1m84kA6xY5qu6uoQCwEspwn',
+  ETH: '0x9F56Ed1e644E8aD227Fd435fBeB0Fb14e17239c7',
+  SOL: '3KWkVTQNWpHjsBzPRo4QZ7sVv3ZHeBg7rHzxzdRpiUiE',
 };
 
 type Category = 'Featured' | 'Items' | 'Services';
