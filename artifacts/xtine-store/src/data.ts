@@ -1,4 +1,3 @@
-// rebuilt: force env reload
 import type { Product } from './types';
 
 export const defaultProducts: Product[] = [
@@ -220,7 +219,7 @@ export const defaultProducts: Product[] = [
 
 const STORAGE_KEY = 'xtine_products_v2';
 const ADMIN_KEY = 'Rubeans2124!';
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'https://workspaceapi-server-production-5721.up.railway.app';
 
 export function loadProducts(): Product[] {
   try {

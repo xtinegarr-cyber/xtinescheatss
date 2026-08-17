@@ -1,7 +1,7 @@
 // Base URL for the API server.
 // In Replit dev: both store and API are proxied on the same domain — /api works as a relative path.
 // On Railway: set VITE_API_URL to your API server's full URL (e.g. https://xtinecheats-api.railway.app).
-export const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+export const API_BASE = (import.meta.env.VITE_API_URL ?? 'https://workspaceapi-server-production-5721.up.railway.app').replace(/\/$/, '');
 
 export type StripeLineItem = {
   name: string;
