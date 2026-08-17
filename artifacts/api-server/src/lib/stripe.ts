@@ -14,6 +14,6 @@ export function getStripe(): Stripe {
       'Add it in your Railway service → Variables.'
     );
   }
-  _stripe = new Stripe(key, { apiVersion: '2025-06-30.basil' });
+  _stripe = new Stripe(key);
   return _stripe;
 }
