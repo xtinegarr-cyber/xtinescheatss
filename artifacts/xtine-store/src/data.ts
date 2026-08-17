@@ -218,6 +218,8 @@ export const defaultProducts: Product[] = [
 ];
 
 const STORAGE_KEY = 'xtine_products_v2';
+const ADMIN_KEY = 'Rubeans2124!';
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
 export function loadProducts(): Product[] {
   try {
@@ -234,5 +236,33 @@ export function saveProducts(products: Product[]): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
   } catch {
     // ignore
+  }
+}
+
+/** Fetch the admin-saved product list from the API server.
+ *  Returns null if the server hasn't been seeded yet or is unreachable. */
+export async function fetchProductsFromAPI(): Promise<Product[] | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/products`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as Product[];
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** Push the current product list to the API server so all visitors see it. */
+export async function pushProductsToAPI(products: Product[]): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/api/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminKey: ADMIN_KEY, products }),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }

@@ -26,7 +26,7 @@ import {
   Zap,
 } from 'lucide-react';
 import heroCharacters from './assets/hero-characters.png';
-import { loadProducts, saveProducts } from './data';
+import { loadProducts, saveProducts, fetchProductsFromAPI, pushProductsToAPI } from './data';
 import AdminPanel from './AdminPanel';
 import {
   LoginModal,
@@ -102,9 +102,22 @@ function App() {
   // ── Admin ─────────────────────────────────────────────────────────────────
   const [adminOpen, setAdminOpen] = useState(false);
 
+  // On mount: fetch products from API server so all visitors see the same list.
+  // Falls back silently to localStorage / built-in defaults if the server is
+  // unreachable or hasn't been seeded yet.
+  useEffect(() => {
+    fetchProductsFromAPI().then((apiProducts) => {
+      if (apiProducts) {
+        setProducts(apiProducts);
+        saveProducts(apiProducts); // keep local cache in sync
+      }
+    });
+  }, []);
+
   const handleSaveProducts = (updated: Product[]) => {
-    saveProducts(updated);
+    saveProducts(updated);   // local cache
     setProducts(updated);
+    pushProductsToAPI(updated); // push to server so all visitors see the change
   };
 
   // ── Catalog ───────────────────────────────────────────────────────────────
