@@ -119,7 +119,18 @@ function App() {
   const handleSaveProducts = (updated: Product[]) => {
     saveProducts(updated);   // local cache
     setProducts(updated);
-    pushProductsToAPI(updated); // push to server so all visitors see the change
+    // Push to server so all visitors see the change — warn loudly if it fails,
+    // otherwise the change only exists in this browser's localStorage.
+    pushProductsToAPI(updated).then((ok) => {
+      if (!ok) {
+        alert(
+          'Warning: products saved on this device only.\n\n' +
+            'The server could not be reached, so visitors will NOT see these ' +
+            'changes. Check that the API server is running and VITE_API_URL ' +
+            'is set correctly, then hit Save All again.'
+        );
+      }
+    });
   };
 
   // ── Catalog ───────────────────────────────────────────────────────────────
