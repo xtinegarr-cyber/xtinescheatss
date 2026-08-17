@@ -1,67 +1,75 @@
 import { Router } from 'express';
-import fs from 'fs';
-import path from 'path';
+import { eq, sql } from 'drizzle-orm';
+import { db, productsStoreTable } from '@workspace/db';
 import { logger } from '../lib/logger';
 
 const ADMIN_KEY = process.env.ADMIN_KEY ?? 'Rubeans2124!';
+const SINGLETON_ID = 'singleton';
 
-// Products persist to a JSON file so they survive server restarts.
-// Set DATA_DIR (e.g. to a Railway volume mount path like /data) for
-// durability across redeploys; defaults to ./data next to the server.
-const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
-const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function loadStore(): any[] {
+// Ensure the table exists on first boot (idempotent).
+async function ensureTable() {
   try {
-    const raw = fs.readFileSync(PRODUCTS_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      logger.info({ count: parsed.length }, 'Loaded products from disk');
-      return parsed;
-    }
-  } catch (err: unknown) {
-    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      logger.error({ err }, 'Failed to load products file');
-    }
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS products_store (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL DEFAULT '[]',
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    logger.info('products_store table ready');
+  } catch (err) {
+    logger.error({ err }, 'Failed to ensure products_store table');
   }
-  return [];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function persistStore(products: any[]): void {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  const tmp = PRODUCTS_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(products, null, 2), 'utf8');
-  fs.renameSync(tmp, PRODUCTS_FILE);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let store: any[] = loadStore();
+ensureTable();
 
 export const productsRouter = Router();
 
 // GET /api/products — public, returns current product list
-productsRouter.get('/products', (_req, res) => {
-  res.json(store);
+productsRouter.get('/products', async (_req, res) => {
+  try {
+    const rows = await db
+      .select()
+      .from(productsStoreTable)
+      .where(eq(productsStoreTable.id, SINGLETON_ID));
+
+    if (rows.length === 0) return res.json([]);
+    return res.json(JSON.parse(rows[0].data));
+  } catch (err) {
+    logger.error({ err }, 'Failed to read products from DB');
+    return res.status(500).json({ error: 'Failed to load products' });
+  }
 });
 
 // POST /api/products — admin only, replaces the product list
-productsRouter.post('/products', (req, res) => {
+productsRouter.post('/products', async (req, res) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { adminKey, products } = req.body as { adminKey?: string; products?: any[] };
+
   if (adminKey !== ADMIN_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   if (!Array.isArray(products)) {
     return res.status(400).json({ error: 'products must be an array' });
   }
+
   try {
-    persistStore(products);
+    await db
+      .insert(productsStoreTable)
+      .values({ id: SINGLETON_ID, data: JSON.stringify(products) })
+      .onConflictDoUpdate({
+        target: productsStoreTable.id,
+        set: {
+          data: JSON.stringify(products),
+          updatedAt: new Date(),
+        },
+      });
+
+    logger.info({ count: products.length }, 'Products saved to DB');
+    return res.json({ ok: true, count: products.length });
   } catch (err) {
-    logger.error({ err }, 'Failed to persist products to disk');
+    logger.error({ err }, 'Failed to save products to DB');
     return res.status(500).json({ error: 'Failed to save products' });
   }
-  store = products;
-  return res.json({ ok: true, count: store.length });
 });
