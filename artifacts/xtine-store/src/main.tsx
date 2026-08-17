@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Router, Route, Switch } from 'wouter';
 
 import App from './App';
 import ProductPage from './ProductPage';
@@ -13,13 +13,13 @@ createRoot(document.getElementById('root')!, {
   },
 }).render(
   <ErrorBoundary>
-    <BrowserRouter>
-      <Routes>
-        {/* Product detail pages — e.g. /rust, /rainbow-six-siege */}
-        <Route path="/:slug" element={<ProductPage />} />
-        {/* Main storefront — catches / and anything that isn't a product slug */}
-        <Route path="/*" element={<App />} />
-      </Routes>
-    </BrowserRouter>
+    <Router>
+      <Switch>
+        {/* Product detail pages — /rust, /rainbow-six-siege, etc. */}
+        <Route path="/:slug" component={ProductPage} />
+        {/* Main storefront — root and anything that isn't a slug */}
+        <Route component={App} />
+      </Switch>
+    </Router>
   </ErrorBoundary>,
 );

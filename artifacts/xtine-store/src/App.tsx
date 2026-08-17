@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 import { toSlug } from './utils';
 import {
   ArrowRight,
@@ -123,7 +123,7 @@ function App() {
   };
 
   // ── Catalog ───────────────────────────────────────────────────────────────
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
 
   const [category, setCategory] = useState<Category>('Featured');
   const [query, setQuery] = useState('');

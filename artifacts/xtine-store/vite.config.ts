@@ -23,7 +23,7 @@ export default defineConfig({
         'attached_assets',
       ),
     },
-    dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'],
+    dedupe: ['react', 'react-dom', 'wouter'],
   },
   root: path.resolve(import.meta.dirname),
   build: {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'wouter';
 import {
   ArrowLeft,
   Check,
@@ -31,7 +31,7 @@ function writeCart(cart: Record<string, CartEntry>) {
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+  const [, navigate] = useLocation();
 
   const [products, setProducts] = useState<Product[]>(loadProducts);
   const [selectedDuration, setSelectedDuration] = useState(0);
@@ -88,7 +88,7 @@ export default function ProductPage() {
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-4 lg:px-10">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => window.history.back()}
               className="flex items-center gap-2 text-[13px] font-semibold text-[#a0a0b8] transition-colors hover:text-white"
             >
               <ArrowLeft size={16} /> Back
