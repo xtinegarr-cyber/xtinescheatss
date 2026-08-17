@@ -1,4 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toSlug } from './utils';
 import {
   ArrowRight,
   Check,
@@ -121,9 +123,10 @@ function App() {
   };
 
   // ── Catalog ───────────────────────────────────────────────────────────────
+  const navigate = useNavigate();
+
   const [category, setCategory] = useState<Category>('Featured');
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Product | null>(null);
   const [mobileNav, setMobileNav] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -146,8 +149,22 @@ function App() {
   }, [listedProducts, category, query]);
 
   // ── Cart ──────────────────────────────────────────────────────────────────
-  const [cart, setCart] = useState<Record<string, CartEntry>>({});
-  const [cartOpen, setCartOpen] = useState(false);
+  const CART_KEY = 'xtine_cart_v1';
+  const [cart, setCart] = useState<Record<string, CartEntry>>(() => {
+    try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '{}') as Record<string, CartEntry>; }
+    catch { return {}; }
+  });
+  const [cartOpen, setCartOpen] = useState(() => sessionStorage.getItem('openCart') === '1');
+
+  // Persist cart to localStorage on every change so ProductPage can read it
+  useEffect(() => {
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch { /* ignore */ }
+  }, [cart]);
+
+  // Clear the openCart signal after we've read it
+  useEffect(() => {
+    sessionStorage.removeItem('openCart');
+  }, []);
 
   const cartEntries = Object.entries(cart);
   const cartProducts = cartEntries
@@ -563,7 +580,7 @@ function App() {
                   index={index}
                   favorite={favorites.includes(product.id)}
                   onFavorite={() => setFavorites((f) => f.includes(product.id) ? f.filter((id) => id !== product.id) : [...f, product.id])}
-                  onView={() => setSelected(product)}
+                  onView={() => navigate('/' + toSlug(product.name))}
                 />
               ))}
             </div>
@@ -609,13 +626,6 @@ function App() {
       </footer>
 
       {/* ── OVERLAYS ── */}
-      {selected && (
-        <ProductDetail
-          product={selected}
-          onClose={() => setSelected(null)}
-          onAdd={(durationIndex) => { addToCart(selected, durationIndex); setSelected(null); }}
-        />
-      )}
       {cartOpen && (
         <CartDrawer
           cartProducts={cartProducts}
