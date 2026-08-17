@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { stripe } from '../lib/stripe';
+import { getStripe } from '../lib/stripe';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -21,7 +21,7 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
       return;
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       line_items: items.map((item) => ({
@@ -64,7 +64,7 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
 
   if (webhookSecret) {
     try {
-      event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
+      event = getStripe().webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
     } catch (err) {
       logger.error({ err }, 'Webhook signature verification failed');
       res.status(400).json({ error: 'Webhook signature verification failed' });
