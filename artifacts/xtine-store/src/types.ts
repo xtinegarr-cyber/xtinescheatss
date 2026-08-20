@@ -10,12 +10,22 @@ export type FeatureGroup = {
   items: string[];
 };
 
+export type UnitOption = {
+  id: string;
+  name: string;
+  unitLabel: string;
+  price: number;
+  minimumSubtotal: number;
+};
+
 export type Product = {
   id: string;
   name: string;
   game: string;
   category: 'Items' | 'Services';
   durations: DurationOption[];
+  purchaseType?: 'duration' | 'unit';
+  unitOptions?: UnitOption[];
   note: string;
   tag: string;
   image: string;
@@ -28,5 +38,6 @@ export type Product = {
 
 export type CartEntry = {
   durationIndex: number;
+  optionIndex?: number;
   qty: number;
 };

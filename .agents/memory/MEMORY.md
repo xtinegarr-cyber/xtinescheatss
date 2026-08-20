@@ -1,0 +1,4 @@
+- [Digital order fulfillment](digital-order-fulfillment.md) — paid Stripe returns reveal the supplied download link; no customer email or fulfillment email flow.
+- [Landing hero artwork](landing-hero-artwork.md) — use the original Hibana artwork in the landing hero; do not use the alternate asset with a checkout panel.
+- [Sub-cent Stripe pricing](sub-cent-stripe-pricing.md) — display the advertised unit rate and use the same cent-rounded quantity total in the storefront and Stripe.
+- [DonutSMP product grouping](donutsmp-product-grouping.md) — present DonutSMP as one catalog card with selectable item variants and independent cart lines.

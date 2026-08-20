@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KoCapc-ihkWfNBzLo_19A"
+uri = "file://attached_assets/hibana-hero-banner.png"
+type = "image"
+title = "Hibana hero banner"
+description = "The updated hero artwork with Hibana replacing the original two characters while preserving the existing layout and purple treatment."
+logical_id = "345111e7-2f1b-449f-a8ca-01712993740f"
+content_hash = "sha256:b9b21bd396bb44b5b046e84287e29c0d50395998ac92de1991a242899bb64640"
+size = 1233088
+mtime_ms = 1787194818200
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:280da878-38fe-4bde-bdc6-ba32153ec4b0/345111e7-2f1b-449f-a8ca-01712993740f/3b592f3c-f842-4fd0-8130-3b1c07f5d84e"
+storage_version_token = "1787194824196804"
+content_type = "image/png"
+
+[[outputs]]
+id = "Bd0wUtS-64pK-igWkL1J2"
+uri = "file://attached_assets/hibana-hero-banner-smaller.png"
+type = "image"
+title = "Smaller Hibana hero banner"
+description = "The same hero artwork with Hibana scaled down slightly and the original composition preserved."
+logical_id = "df4454f9-3776-4dd8-bc9e-f6e31e5bdc42"
+content_hash = "sha256:349b5edb2f1644afec5a4cf14aa0202ef5c4be7609e72eba8eb0b5540d4b3da6"
+size = 1001437
+mtime_ms = 1787195051876
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:280da878-38fe-4bde-bdc6-ba32153ec4b0/df4454f9-3776-4dd8-bc9e-f6e31e5bdc42/3e5614ed-a29a-47cf-9141-755dd026e053"
+storage_version_token = "1787195052251624"
+content_type = "image/png"

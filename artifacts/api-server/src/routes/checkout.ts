@@ -8,6 +8,57 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 const fulfillmentUrl = 'https://mega.nz/folder/KuAwiKDA#Vd7pqEQD0cuEnzfAvsuXFw.';
+const MAX_QUANTITY = 100_000;
+
+type CatalogProduct =
+  | {
+    kind: 'duration';
+    name: string;
+    durations: { label: string; priceCents: number }[];
+  }
+  | {
+    kind: 'unit';
+    name: string;
+    options: {
+      name: string;
+      unitLabel: string;
+      unitPriceInThousandths: number;
+      minimumSubtotalCents: number;
+    }[];
+  };
+
+// Stripe prices are derived exclusively from this server-owned catalog.
+const checkoutCatalog: Record<string, CatalogProduct> = {
+  'arc-raiders': {
+    kind: 'duration',
+    name: 'Arc Raiders',
+    durations: [{ label: '1 Day', priceCents: 499 }, { label: '3 Days', priceCents: 1299 }, { label: '7 Days', priceCents: 1999 }, { label: '30 Days', priceCents: 3999 }],
+  },
+  'hwid-spoofer': {
+    kind: 'duration',
+    name: 'HWID Spoofer',
+    durations: [{ label: '1 Day', priceCents: 299 }, { label: '3 Days', priceCents: 599 }, { label: '7 Days', priceCents: 999 }, { label: '30 Days', priceCents: 1999 }],
+  },
+  'rainbow-six-siege': {
+    kind: 'duration',
+    name: 'Rainbow Six Siege',
+    durations: [{ label: '1 Day', priceCents: 499 }, { label: '3 Days', priceCents: 1299 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5899 }],
+  },
+  rust: {
+    kind: 'duration',
+    name: 'Rust',
+    durations: [{ label: '1 Day', priceCents: 699 }, { label: '3 Days', priceCents: 1499 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5599 }],
+  },
+  donutsmp: {
+    kind: 'unit',
+    name: 'DonutSMP',
+    options: [
+      { name: 'In-Game Money', unitLabel: 'million', unitPriceInThousandths: 81, minimumSubtotalCents: 400 },
+      { name: 'Skeleton Spawner', unitLabel: 'spawner', unitPriceInThousandths: 450, minimumSubtotalCents: 400 },
+      { name: 'Elytra', unitLabel: 'elytra', unitPriceInThousandths: 24_580, minimumSubtotalCents: 400 },
+    ],
+  },
+};
 
 // ── POST /api/checkout/create-session ────────────────────────────────────────
 // Called by the frontend to create a Stripe Checkout session.
@@ -16,7 +67,7 @@ const fulfillmentUrl = 'https://mega.nz/folder/KuAwiKDA#Vd7pqEQD0cuEnzfAvsuXFw.'
 router.post('/checkout/create-session', async (req: Request, res: Response) => {
   try {
     const { items, successUrl, cancelUrl } = req.body as {
-      items: { name: string; duration: string; price: number; qty: number }[];
+      items: { productId: string; durationIndex?: number; optionIndex?: number; qty: number }[];
       successUrl: string;
       cancelUrl: string;
     };
@@ -26,20 +77,98 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
       return;
     }
 
-    const session = await getStripe().checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      line_items: items.map((item) => ({
+    const lineItems: {
+      price_data: {
+        currency: 'usd';
+        product_data: { name: string; description: string };
+        unit_amount: number;
+      };
+      quantity: number;
+    }[] = [];
+
+    for (const item of items) {
+      if (
+        typeof item.productId !== 'string'
+        || !Number.isInteger(item.qty)
+        || item.qty < 1
+        || item.qty > MAX_QUANTITY
+      ) {
+        res.status(400).json({ error: 'Invalid checkout item quantity' });
+        return;
+      }
+
+      const product = checkoutCatalog[item.productId];
+      if (!product) {
+        res.status(400).json({ error: 'A requested product is unavailable' });
+        return;
+      }
+
+      if (product.kind === 'unit') {
+        const optionIndex = item.optionIndex;
+        if (
+          typeof optionIndex !== 'number'
+          || !Number.isInteger(optionIndex)
+          || optionIndex < 0
+          || optionIndex >= product.options.length
+        ) {
+          res.status(400).json({ error: 'Invalid DonutSMP item option' });
+          return;
+        }
+
+        const option = product.options[optionIndex];
+        // The advertised $0.081 rate is stored as thousandths of a dollar.
+        // The combined quantity total is rounded once to Stripe's whole cents.
+        const subtotalCents = Math.round((option.unitPriceInThousandths * item.qty) / 10);
+        if (subtotalCents < option.minimumSubtotalCents) {
+          res.status(400).json({
+            error: `${option.name} requires a minimum $${(option.minimumSubtotalCents / 100).toFixed(2)} subtotal`,
+          });
+          return;
+        }
+
+        lineItems.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${product.name} — ${option.name} — ${item.qty.toLocaleString()} ${option.unitLabel}${item.qty === 1 ? '' : 's'}`,
+              description: 'DonutSMP item purchase',
+            },
+            unit_amount: subtotalCents,
+          },
+          quantity: 1,
+        });
+        continue;
+      }
+
+      const durationIndex = item.durationIndex;
+      if (
+        typeof durationIndex !== 'number'
+        || !Number.isInteger(durationIndex)
+        || durationIndex < 0
+        || durationIndex >= product.durations.length
+      ) {
+        res.status(400).json({ error: 'Invalid product duration' });
+        return;
+      }
+
+      const duration = product.durations[durationIndex];
+      lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
-            name: item.name,
-            description: `${item.duration} access`,
+            name: product.name,
+            description: `${duration.label} access`,
           },
-          unit_amount: Math.round(item.price * 100), // convert dollars → cents
+          unit_amount: duration.priceCents,
         },
         quantity: item.qty,
-      })),
+      });
+    }
+
+    const session = await getStripe().checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: lineItems,
       success_url: successUrl,
       cancel_url: cancelUrl,
     });

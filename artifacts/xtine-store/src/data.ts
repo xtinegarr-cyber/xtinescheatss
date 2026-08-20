@@ -1,4 +1,5 @@
 import type { Product } from './types';
+import donutSmpArtwork from '@assets/sussmp_1787258622751.png';
 
 export const defaultProducts: Product[] = [
   {
@@ -78,6 +79,27 @@ export const defaultProducts: Product[] = [
     description: 'Premium cheat software for Rust.',
     eta: 'Instant delivery',
     type: 'Cheat',
+    listed: true,
+    features: [],
+  },
+  {
+    id: 'donutsmp',
+    name: 'DonutSMP',
+    game: 'DonutSMP',
+    category: 'Items',
+    durations: [],
+    purchaseType: 'unit',
+    unitOptions: [
+      { id: 'money', name: 'In-Game Money', unitLabel: 'million', price: 0.081, minimumSubtotal: 4 },
+      { id: 'skeleton-spawner', name: 'Skeleton Spawner', unitLabel: 'spawner', price: 0.45, minimumSubtotal: 4 },
+      { id: 'elytra', name: 'Elytra', unitLabel: 'elytra', price: 24.58, minimumSubtotal: 4 },
+    ],
+    note: 'Money, spawners & Elytra',
+    tag: 'DonutSMP',
+    image: donutSmpArtwork,
+    description: 'Choose from DonutSMP in-game money, Skeleton Spawners, and Elytra.',
+    eta: 'Manual delivery',
+    type: 'DonutSMP',
     listed: true,
     features: [],
   },

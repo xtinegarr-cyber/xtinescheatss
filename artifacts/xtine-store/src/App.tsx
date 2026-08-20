@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { toSlug } from './utils';
+import { calculateChargeAmount, toSlug } from './utils';
 import {
   ArrowRight,
   Check,
@@ -20,7 +20,6 @@ import {
   Plus,
   Search,
   Settings2,
-  ShoppingBag,
   ShoppingCart,
   Sparkles,
   User,
@@ -57,6 +56,28 @@ const wallets: Record<string, string> = {
 
 type Category = 'Featured' | 'Items' | 'Services';
 type AuthModal = 'login' | 'signup' | null;
+
+function getProductPrice(product: Product, entry: CartEntry) {
+  if (product.purchaseType === 'unit') {
+    return product.unitOptions?.[entry.optionIndex ?? 0]?.price ?? 0;
+  }
+  return product.durations[entry.durationIndex]?.price ?? product.durations[0]?.price ?? 0;
+}
+
+function getUnitOption(product: Product, entry: CartEntry) {
+  return product.unitOptions?.[entry.optionIndex ?? 0];
+}
+
+function getItemSubtotal(product: Product, entry: CartEntry) {
+  return calculateChargeAmount(getProductPrice(product, entry), entry.qty);
+}
+
+function isBelowMinimum(product: Product, entry: CartEntry) {
+  const unitOption = getUnitOption(product, entry);
+  return product.purchaseType === 'unit'
+    && Boolean(unitOption?.minimumSubtotal)
+    && getItemSubtotal(product, entry) < (unitOption?.minimumSubtotal ?? 0);
+}
 
 function App() {
   // ── Products ──────────────────────────────────────────────────────────────
@@ -160,7 +181,7 @@ function App() {
   }, [listedProducts, category, query]);
 
   // ── Cart ──────────────────────────────────────────────────────────────────
-  const CART_KEY = 'xtine_cart_v1';
+  const CART_KEY = 'xtine_cart_v2';
   const [cart, setCart] = useState<Record<string, CartEntry>>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '{}') as Record<string, CartEntry>; }
     catch { return {}; }
@@ -179,22 +200,28 @@ function App() {
 
   const cartEntries = Object.entries(cart);
   const cartProducts = cartEntries
-    .map(([id, entry]) => {
-      const product = products.find((p) => p.id === id);
-      return product ? { product, entry } : null;
+    .map(([cartKey, entry]) => {
+      const productId = cartKey.split(':')[0];
+      const product = products.find((p) => p.id === productId);
+      return product ? { cartKey, product, entry } : null;
     })
-    .filter(Boolean) as { product: Product; entry: CartEntry }[];
+    .filter(Boolean) as { cartKey: string; product: Product; entry: CartEntry }[];
 
   const itemCount = cartEntries.reduce((sum, [, e]) => sum + e.qty, 0);
   const subtotal = cartProducts.reduce((sum, { product, entry }) => {
-    const price = product.durations[entry.durationIndex]?.price ?? 0;
-    return sum + price * entry.qty;
+    return sum + getItemSubtotal(product, entry);
   }, 0);
+  const minimumOrderItems = cartProducts.filter(({ product, entry }) => isBelowMinimum(product, entry));
 
-  const addToCart = (product: Product, durationIndex = 0) => {
+  const addToCart = (product: Product, durationIndex = 0, quantity = 1) => {
+    const cartKey = product.purchaseType === 'unit' ? `${product.id}:0` : product.id;
     setCart((c) => ({
       ...c,
-      [product.id]: { durationIndex, qty: (c[product.id]?.qty ?? 0) + 1 },
+      [cartKey]: {
+        durationIndex,
+        optionIndex: product.purchaseType === 'unit' ? 0 : undefined,
+        qty: (c[cartKey]?.qty ?? 0) + quantity,
+      },
     }));
     setCartOpen(true);
   };
@@ -233,15 +260,20 @@ function App() {
   };
 
   const handleCheckoutSubmit = () => {
+    if (minimumOrderItems.length) return;
     // Save order to user's history if logged in as a regular user
     if (currentUser && !currentUser.isAdmin) {
       const order: Order = {
         id: generateOrderId(),
         date: new Date().toISOString(),
         items: cartProducts.map(({ product, entry }) => ({
-          productName: product.name,
-          duration: product.durations[entry.durationIndex]?.label ?? '',
-          price: (product.durations[entry.durationIndex]?.price ?? 0) * entry.qty,
+          productName: product.purchaseType === 'unit'
+            ? `${product.name} — ${getUnitOption(product, entry)?.name ?? 'Item'}`
+            : product.name,
+          duration: product.purchaseType === 'unit'
+            ? `${entry.qty.toLocaleString()} ${getUnitOption(product, entry)?.unitLabel ?? 'unit'}${entry.qty === 1 ? '' : 's'}`
+            : product.durations[entry.durationIndex]?.label ?? '',
+          price: getItemSubtotal(product, entry),
         })),
         total: subtotal,
         txRef,
@@ -517,7 +549,7 @@ function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 rounded-2xl bg-[#0f0f18] p-6 sm:p-10 border border-[#1e1e2e] shadow-2xl relative">
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#1e1e2e] via-[#6C5CE7]/30 to-[#1e1e2e] -z-10" />
               <div className="flex items-start gap-5 relative z-10">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#13131e] border border-[#1e1e2e] text-[#6C5CE7]"><ShoppingBag size={22} strokeWidth={2.5} /></div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#13131e] border border-[#1e1e2e] text-[#6C5CE7]"><ShoppingCart size={22} strokeWidth={2.5} /></div>
                 <div>
                   <h4 className="font-bold text-white text-[15px] mb-1.5 tracking-tight">Trusted since 2025</h4>
                   <p className="text-[#5a5a72] text-[13px] leading-relaxed">Established and trusted by thousands of players since day one.</p>
@@ -640,15 +672,21 @@ function App() {
         <CartDrawer
           cartProducts={cartProducts}
           subtotal={subtotal}
+          minimumOrderItems={minimumOrderItems}
           onClose={() => setCartOpen(false)}
           onUpdate={updateQuantity}
-          onCheckout={() => { setCartOpen(false); setCheckout(true); }}
+          onCheckout={() => {
+            if (minimumOrderItems.length) return;
+            setCartOpen(false);
+            setCheckout(true);
+          }}
         />
       )}
       {checkout && (
         <Checkout
           cartProducts={cartProducts}
           subtotal={subtotal}
+          minimumOrderItems={minimumOrderItems}
           payment={payment}
           setPayment={setPayment}
           txRef={txRef}
@@ -734,7 +772,12 @@ function App() {
 function ProductCard({ product, index, favorite, onFavorite, onView }: {
   product: Product; index: number; favorite: boolean; onFavorite: () => void; onView: () => void;
 }) {
-  const lowestPrice = Math.min(...product.durations.map((d) => d.price));
+  const prices = product.purchaseType === 'unit'
+    ? product.unitOptions?.map((option) => option.price) ?? []
+    : product.durations.map((duration) => duration.price);
+  const lowestPrice = Math.min(...prices);
+  const lowestUnitOption = product.unitOptions?.find((option) => option.price === lowestPrice);
+  const pricePrecision = product.purchaseType === 'unit' && lowestPrice < 1 ? 3 : 2;
 
   return (
     <article
@@ -777,7 +820,8 @@ function ProductCard({ product, index, favorite, onFavorite, onView }: {
           </div>
           <div className="text-right">
             <p className="text-[11px] text-[#5a5a72] font-medium">from</p>
-            <p className="text-[17px] font-bold text-[#8B7CF8]">${lowestPrice.toFixed(2)}</p>
+            <p className="text-[17px] font-bold text-[#8B7CF8]">${lowestPrice.toFixed(pricePrecision)}</p>
+            {product.purchaseType === 'unit' && <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-[#5a5a72]">per {lowestUnitOption?.unitLabel}</p>}
           </div>
         </div>
         <div className="mt-5 flex items-center justify-between border-t border-[#1e1e2e] pt-5">
@@ -843,7 +887,7 @@ function ProductDetail({ product, onClose, onAdd }: {
                 </div>
               </div>
               <button onClick={() => onAdd(selectedDuration)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)]">
-                Add to Bag — {chosen?.label} <ShoppingCart size={16} />
+                Add to Cart — {chosen?.label} <ShoppingCart size={16} />
               </button>
             </div>
           </div>
@@ -875,43 +919,52 @@ function ProductDetail({ product, onClose, onAdd }: {
 
 // ── CART DRAWER ───────────────────────────────────────────────────────────────
 
-function CartDrawer({ cartProducts, subtotal, onClose, onUpdate, onCheckout }: {
-  cartProducts: { product: Product; entry: CartEntry }[];
-  subtotal: number; onClose: () => void;
+function CartDrawer({ cartProducts, subtotal, minimumOrderItems, onClose, onUpdate, onCheckout }: {
+  cartProducts: { cartKey: string; product: Product; entry: CartEntry }[];
+  subtotal: number; minimumOrderItems: { cartKey: string; product: Product; entry: CartEntry }[]; onClose: () => void;
   onUpdate: (id: string, amount: number) => void; onCheckout: () => void;
 }) {
+  const hasMinimumOrderIssue = minimumOrderItems.length > 0;
   return (
     <div className="fixed inset-0 z-[100] bg-[#09090f]/80 backdrop-blur-sm">
       <aside className="absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col border-l border-[#1e1e2e] bg-[#0f0f18] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[#1e1e2e] px-7 py-6">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#5a5a72] mb-1">Your Selection</p>
-            <h2 className="text-2xl font-extrabold text-white tracking-tight">The Bag <span className="text-[#6C5CE7]">({cartProducts.length})</span></h2>
+            <h2 className="text-2xl font-extrabold text-white tracking-tight">The Cart <span className="text-[#6C5CE7]">({cartProducts.length})</span></h2>
           </div>
           <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#13131e] border border-[#1e1e2e] text-[#a0a0b8] hover:text-white transition-colors"><X size={18} /></button>
         </div>
         {cartProducts.length ? (
           <>
             <div className="flex-1 space-y-4 overflow-y-auto p-7">
-              {cartProducts.map(({ product, entry }) => {
+              {cartProducts.map(({ cartKey, product, entry }) => {
                 const duration = product.durations[entry.durationIndex];
+                const unitOption = getUnitOption(product, entry);
+                const itemSubtotal = getItemSubtotal(product, entry);
+                const minimumOrderIssue = isBelowMinimum(product, entry);
                 return (
-                  <div key={product.id} className="flex gap-4 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-4">
+                  <div key={cartKey} className={`flex gap-4 rounded-xl border bg-[#13131e] p-4 ${minimumOrderIssue ? 'border-amber-400/30' : 'border-[#1e1e2e]'}`}>
                     <div className="flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-lg bg-[#0f0f18] border border-[#1e1e2e] overflow-hidden">
                       {product.image ? <img src={product.image} alt={product.name} className="h-full w-full object-cover" /> : <Gamepad2 size={32} strokeWidth={1.5} className="text-[#6C5CE7]/40" />}
                     </div>
                     <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
                       <div className="flex justify-between gap-2">
                         <div>
-                          <p className="truncate text-[14px] font-bold text-white">{product.name}</p>
-                          <p className="mt-0.5 text-[11px] font-bold text-[#6C5CE7]">{duration?.label}</p>
+                          <p className="truncate text-[14px] font-bold text-white">{product.purchaseType === 'unit' ? `${product.name} — ${unitOption?.name}` : product.name}</p>
+                          <p className="mt-0.5 text-[11px] font-bold text-[#6C5CE7]">{product.purchaseType === 'unit' ? `$${getProductPrice(product, entry).toFixed(getProductPrice(product, entry) < 1 ? 3 : 2)} / ${unitOption?.unitLabel}` : duration?.label}</p>
                         </div>
-                        <p className="text-[14px] font-bold text-[#8B7CF8]">${((duration?.price ?? 0) * entry.qty).toFixed(2)}</p>
+                        <p className="text-[14px] font-bold text-[#8B7CF8]">${itemSubtotal.toFixed(2)}</p>
                       </div>
+                      {minimumOrderIssue && (
+                        <p className="mt-2 text-[11px] leading-relaxed text-amber-200">
+                          ${unitOption?.minimumSubtotal.toFixed(2)} minimum for this item before checkout.
+                        </p>
+                      )}
                       <div className="flex items-center gap-1 rounded-md bg-[#0f0f18] border border-[#1e1e2e] p-0.5 w-fit mt-2">
-                        <button onClick={() => onUpdate(product.id, -1)} className="flex h-6 w-6 items-center justify-center rounded text-[#a0a0b8] hover:text-white hover:bg-[#1e1e2e]"><Minus size={12} /></button>
+                        <button onClick={() => onUpdate(cartKey, -1)} className="flex h-6 w-6 items-center justify-center rounded text-[#a0a0b8] hover:text-white hover:bg-[#1e1e2e]"><Minus size={12} /></button>
                         <span className="w-6 text-center text-[12px] font-bold text-white">{entry.qty}</span>
-                        <button onClick={() => onUpdate(product.id, 1)} className="flex h-6 w-6 items-center justify-center rounded text-[#a0a0b8] hover:text-white hover:bg-[#1e1e2e]"><Plus size={12} /></button>
+                        <button onClick={() => onUpdate(cartKey, 1)} className="flex h-6 w-6 items-center justify-center rounded text-[#a0a0b8] hover:text-white hover:bg-[#1e1e2e]"><Plus size={12} /></button>
                       </div>
                     </div>
                   </div>
@@ -919,11 +972,16 @@ function CartDrawer({ cartProducts, subtotal, onClose, onUpdate, onCheckout }: {
               })}
             </div>
             <div className="border-t border-[#1e1e2e] p-7 bg-[#0c0c16]">
+              {hasMinimumOrderIssue && (
+                <p className="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2.5 text-center text-[12px] leading-relaxed text-amber-200">
+                  Update the highlighted DonutSMP item quantities to meet their $4.00 minimum before checkout.
+                </p>
+              )}
               <div className="mb-5 flex justify-between items-center">
                 <span className="text-[14px] font-medium text-[#a0a0b8]">Subtotal</span>
                 <span className="text-[18px] font-extrabold text-white">${subtotal.toFixed(2)} USD</span>
               </div>
-              <button onClick={onCheckout} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)]">
+              <button disabled={hasMinimumOrderIssue} onClick={onCheckout} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
                 Continue to Review <ArrowRight size={16} />
               </button>
               <p className="mt-4 text-center text-[11px] font-medium text-[#5a5a72]">Payment is reviewed manually before delivery.</p>
@@ -931,8 +989,8 @@ function CartDrawer({ cartProducts, subtotal, onClose, onUpdate, onCheckout }: {
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#13131e] border border-[#1e1e2e] text-[#5a5a72]"><ShoppingBag size={28} /></div>
-            <h3 className="text-xl font-bold text-white mb-2">Your bag is quiet.</h3>
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#13131e] border border-[#1e1e2e] text-[#5a5a72]"><ShoppingCart size={28} /></div>
+            <h3 className="text-xl font-bold text-white mb-2">Your cart is empty.</h3>
             <p className="text-[14px] text-[#a0a0b8] max-w-[240px] leading-relaxed">Start with a considered drop, then come back here when it feels right.</p>
             <button onClick={onClose} className="mt-8 rounded-lg border border-[#1e1e2e] bg-[#13131e] px-6 py-3 text-[13px] font-bold text-white transition-colors hover:bg-[#1e1e2e] hover:border-[#3a3a4a]">Keep Browsing</button>
           </div>
@@ -944,24 +1002,29 @@ function CartDrawer({ cartProducts, subtotal, onClose, onUpdate, onCheckout }: {
 
 // ── CHECKOUT ──────────────────────────────────────────────────────────────────
 
-function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef, copied, copyWallet, submitted, onClose, onSubmit }: {
-  cartProducts: { product: Product; entry: CartEntry }[];
-  subtotal: number; payment: string; setPayment: (v: string) => void;
+function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayment, txRef, setTxRef, copied, copyWallet, submitted, onClose, onSubmit }: {
+  cartProducts: { cartKey: string; product: Product; entry: CartEntry }[];
+  subtotal: number; minimumOrderItems: { cartKey: string; product: Product; entry: CartEntry }[]; payment: string; setPayment: (v: string) => void;
   txRef: string; setTxRef: (v: string) => void; copied: boolean;
   copyWallet: () => void; submitted: boolean; onClose: () => void; onSubmit: () => void;
 }) {
   const [method, setMethod] = useState<'stripe' | 'crypto'>('stripe');
   const [stripeLoading, setStripeLoading] = useState(false);
   const [stripeError, setStripeError] = useState('');
+  const hasMinimumOrderIssue = minimumOrderItems.length > 0;
 
   const handleStripePay = async () => {
+    if (hasMinimumOrderIssue) {
+      setStripeError('Each DonutSMP item needs a $4.00 subtotal before checkout.');
+      return;
+    }
     setStripeError('');
     setStripeLoading(true);
     try {
       const items = cartProducts.map(({ product, entry }) => ({
-        name: product.name,
-        duration: product.durations[entry.durationIndex]?.label ?? '',
-        price: product.durations[entry.durationIndex]?.price ?? 0,
+        productId: product.id,
+        durationIndex: product.purchaseType === 'unit' ? undefined : entry.durationIndex,
+        optionIndex: product.purchaseType === 'unit' ? entry.optionIndex : undefined,
         qty: entry.qty,
       }));
       const { url } = await createStripeCheckoutSession(items);
@@ -1017,6 +1080,11 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
             <span className="text-[13px] font-bold uppercase tracking-wider text-[#5a5a72]">Amount Due</span>
             <span className="text-2xl font-extrabold text-[#8B7CF8]">${subtotal.toFixed(2)} USD</span>
           </div>
+          {hasMinimumOrderIssue && (
+            <p className="mb-6 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-[13px] leading-relaxed text-amber-200">
+                  Each DonutSMP item must reach a $4.00 subtotal before payment. Return to your cart to update the highlighted item quantities.
+            </p>
+          )}
 
           {/* Payment method tabs */}
           <div className="mb-6 flex gap-2 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-1">
@@ -1048,7 +1116,7 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
               )}
               <button
                 onClick={handleStripePay}
-                disabled={stripeLoading}
+                disabled={stripeLoading || hasMinimumOrderIssue}
                 className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {stripeLoading ? (
@@ -1085,7 +1153,7 @@ function Checkout({ cartProducts, subtotal, payment, setPayment, txRef, setTxRef
                 <label className="text-[13px] font-bold text-white block mb-3">Transaction Hash / Reference</label>
                 <input value={txRef} onChange={(e) => setTxRef(e.target.value)} placeholder="Paste your tx hash here..." className="w-full rounded-xl border border-[#1e1e2e] bg-[#13131e] px-5 py-3.5 text-[14px] text-white outline-none focus:border-[#6C5CE7] transition-colors placeholder:text-[#5a5a72] font-medium" />
               </div>
-              <button disabled={!txRef} onClick={onSubmit} className="flex w-full items-center justify-center rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
+              <button disabled={!txRef || hasMinimumOrderIssue} onClick={onSubmit} className="flex w-full items-center justify-center rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
                 Submit Payment Reference
               </button>
               <p className="text-center text-[11px] font-medium text-[#5a5a72]">Manual review · Delivery confirmed after verification</p>

@@ -204,7 +204,7 @@ export function SignupModal({
 // ─── Order History Modal ──────────────────────────────────────────────────────
 
 import type { Order } from './auth';
-import { Clock3, Package, ShoppingBag } from 'lucide-react';
+import { Clock3, Package, ShoppingCart } from 'lucide-react';
 
 export function OrderHistoryModal({
   orders,
@@ -237,7 +237,7 @@ export function OrderHistoryModal({
           {orders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#13131e] border border-[#1e1e2e] text-[#5a5a72]">
-                <ShoppingBag size={26} />
+                <ShoppingCart size={26} />
               </div>
               <h3 className="text-[17px] font-bold text-white mb-2">No orders yet</h3>
               <p className="text-[13px] text-[#5a5a72] max-w-[260px] leading-relaxed">
