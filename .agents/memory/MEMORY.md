@@ -2,3 +2,4 @@
 - [Landing hero artwork](landing-hero-artwork.md) — use the original Hibana artwork in the landing hero; do not use the alternate asset with a checkout panel.
 - [Sub-cent Stripe pricing](sub-cent-stripe-pricing.md) — display the advertised unit rate and use the same cent-rounded quantity total in the storefront and Stripe.
 - [DonutSMP product grouping](donutsmp-product-grouping.md) — present DonutSMP as one catalog card with selectable item variants and independent cart lines.
+- [Static guide SEO](static-guide-seo.md) — guide URLs are pre-rendered during store builds so crawlers receive meaningful HTML, not only the SPA shell.

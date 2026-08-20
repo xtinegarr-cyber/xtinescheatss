@@ -29,6 +29,7 @@ import {
 import heroCharacters from '@assets/hibana-hero-cropped-clean.png';
 import { loadProducts, saveProducts, fetchProductsFromAPI, pushProductsToAPI } from './data';
 import { Seo } from './seo';
+import { guides } from './guides';
 import AdminPanel from './AdminPanel';
 import {
   LoginModal,
@@ -640,6 +641,32 @@ function App() {
               <button onClick={() => { setQuery(''); setCategory('Featured'); }} className="mt-6 rounded-lg bg-[#1e1e2e] px-6 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-[#2a2a3a]">Clear Filters</button>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── GUIDES ── */}
+      <section id="guides" className="border-t border-[#1e1e2e] bg-[#0c0c16] py-24">
+        <div className="mx-auto max-w-[1400px] px-5 lg:px-10">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[12px] font-extrabold uppercase tracking-[0.2em] text-[#8f82ff]">XtineCheats resources</p>
+              <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">Guides built around what players search.</h2>
+              <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[#a0a0b8]">Explore DonutSMP money-making guides and product resources for every current listing.</p>
+            </div>
+            <button onClick={() => navigate('/guides')} className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#3a345e] px-5 py-3 text-sm font-bold text-[#c4bdff] transition-colors hover:border-[#6C5CE7] hover:bg-[#171426]">
+              Browse all guides <ArrowRight size={16} />
+            </button>
+          </div>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {guides.slice(0, 3).map((guide) => (
+              <button key={guide.slug} onClick={() => navigate(`/guides/${guide.slug}`)} className="group rounded-2xl border border-[#1e1e2e] bg-[#10101a] p-6 text-left transition-colors hover:border-[#6C5CE7]/70 hover:bg-[#151522]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#77718d]">{guide.eyebrow}</p>
+                <h3 className="mt-3 text-xl font-extrabold tracking-tight text-white">{guide.title}</h3>
+                <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[#a0a0b8]">{guide.description}</p>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#a497ff]">Read guide <ArrowRight size={15} /></span>
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -6,6 +6,7 @@ import { Router, Route, Switch } from 'wouter';
 import App from './App';
 import ProductPage from './ProductPage';
 import OrderCompletePage from './OrderCompletePage';
+import GuidePage, { GuidesIndexPage } from './GuidePage';
 import { API_BASE } from './stripe';
 import { ErrorBoundary } from '@/components/error-boundary';
 
@@ -24,6 +25,8 @@ createRoot(document.getElementById('root')!, {
       <Router>
         <Switch>
           <Route path="/order-complete" component={OrderCompletePage} />
+          <Route path="/guides" component={GuidesIndexPage} />
+          <Route path="/guides/:slug" component={GuidePage} />
           {/* Product detail pages — /rust, /rainbow-six-siege, etc. */}
           <Route path="/:slug" component={ProductPage} />
           {/* Main storefront — root and anything that isn't a slug */}

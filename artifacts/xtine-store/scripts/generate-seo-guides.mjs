@@ -1,0 +1,88 @@
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const siteUrl = (process.env.VITE_SITE_URL ?? 'https://xtinecheats.com').replace(/\/$/, '');
+const root = process.cwd();
+const guides = JSON.parse(await readFile(join(root, 'src/guides.json'), 'utf8'));
+const guideDirectory = join(root, 'public/guides');
+
+const escapeHtml = (value) => String(value)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
+
+function documentShell({ title, description, canonical, body, schema }) {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="index, follow" />
+    <meta name="description" content="${escapeHtml(description)}" />
+    <link rel="canonical" href="${canonical}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(description)}" />
+    <meta property="og:url" content="${canonical}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(description)}" />
+    <title>${escapeHtml(title)}</title>
+    <script type="application/ld+json">${JSON.stringify(schema).replaceAll('<', '\\u003c')}</script>
+    <style>
+      :root { color-scheme: dark; } * { box-sizing: border-box; } body { margin: 0; background: #09090f; color: #fff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; line-height: 1.6; } a { color: #b3a8ff; text-decoration: none; } a:hover { color: #fff; } header { border-bottom: 1px solid #1e1e2e; } .header, main, footer { width: min(960px, calc(100% - 40px)); margin: 0 auto; } .header { height: 76px; display: flex; align-items: center; justify-content: space-between; font-weight: 800; } .brand { color: #fff; font-size: 20px; letter-spacing: -.03em; } .brand span, .eyebrow { color: #8f82ff; } main { padding: 52px 0 76px; } .crumb { color: #8c899a; font-size: 13px; margin-bottom: 36px; } .eyebrow { text-transform: uppercase; letter-spacing: .18em; font-size: 12px; font-weight: 800; } h1 { max-width: 850px; font-size: clamp(38px, 6vw, 64px); line-height: 1.04; letter-spacing: -.045em; margin: 18px 0 24px; } h2 { font-size: clamp(26px, 4vw, 34px); line-height: 1.15; letter-spacing: -.025em; margin: 0 0 16px; } .intro { max-width: 800px; color: #b9b5c5; font-size: 19px; } section { border-top: 1px solid #20202d; margin-top: 48px; padding-top: 36px; } p { color: #b9b5c5; margin: 0 0 16px; } ul { margin: 22px 0 0; padding: 20px 20px 20px 42px; border: 1px solid #28263a; background: #11111b; border-radius: 12px; color: #c6c2d1; } li + li { margin-top: 10px; } .cta { margin-top: 52px; padding: 30px; border: 1px solid #5b4eb0; border-radius: 16px; background: #171426; } .button { display: inline-block; margin-top: 8px; padding: 12px 18px; color: #fff; background: #6c5ce7; border-radius: 8px; font-weight: 800; } .button:hover { background: #7c70ef; } footer { border-top: 1px solid #1e1e2e; padding: 28px 0; color: #77718d; font-size: 13px; }
+    </style>
+  </head>
+  <body>${body}</body>
+</html>`;
+}
+
+function guideSchema(guide) {
+  const url = `${siteUrl}/guides/${guide.slug}/`;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'Article', headline: guide.title, description: guide.description, mainEntityOfPage: url, author: { '@type': 'Organization', name: 'XtineCheats' }, publisher: { '@type': 'Organization', name: 'XtineCheats' } },
+      { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl }, { '@type': 'ListItem', position: 2, name: 'Guides', item: `${siteUrl}/guides/` }, { '@type': 'ListItem', position: 3, name: guide.title, item: url }] },
+    ],
+  };
+}
+
+function guideBody(guide) {
+  const sections = guide.sections.map((section) => `<section><h2>${escapeHtml(section.heading)}</h2>${section.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join('')}${section.bullets ? `<ul>${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join('')}</ul>` : ''}</section>`).join('');
+  return `<header><div class="header"><a class="brand" href="/">Xtine<span>Cheats</span></a><a href="/guides">All guides</a></div></header><main><nav class="crumb"><a href="/">Home</a> / <a href="/guides">Guides</a> / ${escapeHtml(guide.title)}</nav><article><div class="eyebrow">${escapeHtml(guide.eyebrow)}</div><h1>${escapeHtml(guide.title)}</h1><p class="intro">${escapeHtml(guide.intro)}</p>${sections}<section class="cta"><div class="eyebrow">Current listing</div><h2>Ready to review the live options?</h2><p>Open the product page to confirm the current price, selection, and delivery information before checkout.</p><a class="button" href="/${guide.productSlug}">${escapeHtml(guide.productLabel)}</a></section></article></main><footer><div class="header"><span>© XtineCheats</span><a href="/guides">Gaming guides</a></div></footer>`;
+}
+
+function indexBody() {
+  const cards = guides.map((guide) => `<section><div class="eyebrow">${escapeHtml(guide.eyebrow)}</div><h2><a href="/guides/${guide.slug}">${escapeHtml(guide.title)}</a></h2><p>${escapeHtml(guide.description)}</p><a class="button" href="/guides/${guide.slug}">Read guide</a></section>`).join('');
+  return `<header><div class="header"><a class="brand" href="/">Xtine<span>Cheats</span></a><a href="/">Store</a></div></header><main><article><div class="eyebrow">XtineCheats resources</div><h1>Gaming guides and product resources.</h1><p class="intro">Browse practical DonutSMP money guides and clear product checklists for every current XtineCheats listing.</p>${cards}</article></main><footer><div class="header"><span>© XtineCheats</span><a href="/">Store</a></div></footer>`;
+}
+
+await rm(guideDirectory, { recursive: true, force: true });
+await mkdir(guideDirectory, { recursive: true });
+for (const guide of guides) {
+  const outputDirectory = join(guideDirectory, guide.slug);
+  const canonical = `${siteUrl}/guides/${guide.slug}/`;
+  await mkdir(outputDirectory, { recursive: true });
+  await writeFile(join(outputDirectory, 'index.html'), documentShell({
+    title: `${guide.title} | XtineCheats`,
+    description: guide.description,
+    canonical,
+    body: guideBody(guide),
+    schema: guideSchema(guide),
+  }));
+}
+
+await writeFile(join(guideDirectory, 'index.html'), documentShell({
+  title: 'Gaming Guides, Cheats & Scripts | XtineCheats',
+  description: 'Browse XtineCheats guides for DonutSMP money-making methods, Arc Raiders, Rainbow Six Siege, Rust, and HWID Spoofer product resources.',
+  canonical: `${siteUrl}/guides/`,
+  body: indexBody(),
+  schema: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'XtineCheats Gaming Guides', url: `${siteUrl}/guides/` },
+}));
+
+const staticPaths = ['/', '/arc-raiders', '/hwid-spoofer', '/rainbow-six-siege', '/rust', '/donutsmp', '/guides/', ...guides.map((guide) => `/guides/${guide.slug}/`)];
+const urls = staticPaths.map((path) => `  <url>\n    <loc>${siteUrl}${path}</loc>\n  </url>`).join('\n');
+await writeFile(join(root, 'public/sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
