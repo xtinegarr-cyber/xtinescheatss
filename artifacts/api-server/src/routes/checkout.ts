@@ -1,8 +1,13 @@
 import { Router, type Request, type Response } from 'express';
+import {
+  GetCheckoutConfirmationQueryParams,
+  GetCheckoutConfirmationResponse,
+} from '@workspace/api-zod';
 import { getStripe } from '../lib/stripe';
 import { logger } from '../lib/logger';
 
 const router = Router();
+const fulfillmentUrl = 'https://mega.nz/folder/KuAwiKDA#Vd7pqEQD0cuEnzfAvsuXFw.';
 
 // ── POST /api/checkout/create-session ────────────────────────────────────────
 // Called by the frontend to create a Stripe Checkout session.
@@ -43,6 +48,55 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
   } catch (err) {
     logger.error({ err }, 'Stripe checkout session creation failed');
     res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
+// ── GET /api/checkout/confirm ─────────────────────────────────────────────────
+// The storefront calls this after Stripe redirects the buyer back with a session ID.
+// The fulfillment URL is only returned when Stripe confirms a paid session.
+
+router.get('/checkout/confirm', async (req: Request, res: Response): Promise<void> => {
+  const params = GetCheckoutConfirmationQueryParams.safeParse(req.query);
+  if (!params.success || !params.data.session_id.trim()) {
+    res.status(400).json({ error: 'A valid checkout session is required' });
+    return;
+  }
+
+  try {
+    const session = await getStripe().checkout.sessions.retrieve(params.data.session_id, {
+      expand: ['line_items'],
+    });
+
+    if (session.payment_status !== 'paid') {
+      req.log.warn({ paymentStatus: session.payment_status }, 'Unpaid checkout confirmation requested');
+      res.status(400).json({ error: 'This payment has not been completed yet' });
+      return;
+    }
+
+    const confirmation = GetCheckoutConfirmationResponse.parse({
+      paymentStatus: 'paid',
+      items: (session.line_items?.data ?? []).map((item) => ({
+        name: item.description,
+        quantity: item.quantity ?? 1,
+      })),
+      fulfillmentUrl,
+    });
+
+    req.log.info({ itemCount: confirmation.items.length }, 'Paid checkout confirmed');
+    res.json(confirmation);
+  } catch (err) {
+    const stripeStatus = typeof err === 'object' && err && 'statusCode' in err
+      ? (err as { statusCode?: number }).statusCode
+      : undefined;
+
+    if (stripeStatus === 404) {
+      req.log.warn('Checkout confirmation requested for unknown session');
+      res.status(404).json({ error: 'Checkout session not found' });
+      return;
+    }
+
+    req.log.error({ err }, 'Stripe checkout confirmation failed');
+    res.status(500).json({ error: 'Unable to confirm this checkout session' });
   }
 });
 

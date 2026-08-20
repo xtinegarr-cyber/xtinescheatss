@@ -27,7 +27,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import heroCharacters from './assets/hero-characters.png';
+import heroCharacters from '@assets/hibana-hero-cropped-clean.png';
 import { loadProducts, saveProducts, fetchProductsFromAPI, pushProductsToAPI } from './data';
 import AdminPanel from './AdminPanel';
 import {
@@ -485,10 +485,9 @@ function App() {
       {/* ── HERO ── */}
       <section className="relative min-h-[90vh] flex flex-col justify-center bg-[#09090f]">
         <div className="absolute top-0 right-0 w-full md:w-[60%] h-full z-0 pointer-events-none opacity-40 md:opacity-100 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#09090f] via-[#09090f]/60 to-transparent z-10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#09090f] via-transparent to-transparent z-10" />
+           <div className="absolute inset-0 bg-gradient-to-t from-[#09090f]/45 via-transparent to-transparent z-10" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#09090f] via-transparent to-transparent z-10" />
-          <img src={heroCharacters} alt="" className="w-full h-full object-cover object-left-top opacity-90 mix-blend-screen" />
+           <img src={heroCharacters} alt="" className="absolute bottom-[11%] right-[2%] h-[78%] w-[72%] object-contain object-right-bottom opacity-100 mix-blend-screen" />
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-[1400px] px-5 lg:px-10 py-20 pb-40">

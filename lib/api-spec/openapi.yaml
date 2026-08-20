@@ -24,6 +24,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /checkout/confirm:
+    get:
+      operationId: getCheckoutConfirmation
+      tags: [checkout]
+      summary: Confirm a completed Stripe checkout session
+      description: Verifies that a Stripe Checkout session was paid and returns the purchased items and fulfillment link.
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmed paid checkout session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutConfirmation"
+        "400":
+          description: The session has not been paid
+        "404":
+          description: Stripe session could not be found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +56,31 @@ components:
           type: string
       required:
         - status
+    CheckoutItem:
+      type: object
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+          minimum: 1
+      required:
+        - name
+        - quantity
+    CheckoutConfirmation:
+      type: object
+      properties:
+        paymentStatus:
+          type: string
+          enum: [paid]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckoutItem"
+        fulfillmentUrl:
+          type: string
+      required:
+        - paymentStatus
+        - items
+        - fulfillmentUrl
 

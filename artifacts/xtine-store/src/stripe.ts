@@ -16,7 +16,7 @@ export async function createStripeCheckoutSession(
   const origin = window.location.origin;
   const base = window.location.pathname.replace(/\/$/, '');
 
-  const successUrl = `${origin}${base}/?payment_success=true&session_id={CHECKOUT_SESSION_ID}`;
+  const successUrl = `${origin}${base}/order-complete?session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${origin}${base}/`;
 
   let res: Response;
