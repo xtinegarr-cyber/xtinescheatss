@@ -10,6 +10,7 @@ import {
   Grip
 } from 'lucide-react';
 import { useGetCheckoutConfirmation, getGetCheckoutConfirmationQueryKey } from '@workspace/api-client-react';
+import { Seo } from './seo';
 
 type OrderData = {
   paymentStatus: string;
@@ -42,6 +43,12 @@ export default function OrderCompletePage() {
 
   return (
     <main className="noise min-h-[100dvh] bg-[#09090f] text-white selection:bg-[#6C5CE7] selection:text-white flex flex-col">
+      <Seo
+        title="Checkout Confirmation | XtineCheats"
+        description="View your XtineCheats order confirmation."
+        path="/order-complete"
+        noIndex
+      />
       {/* Header */}
       <header className="relative z-50 border-b border-[#1e1e2e] bg-[#0c0c16]/80 backdrop-blur-xl">
         <div className="mx-auto flex h-[76px] max-w-[1400px] items-center px-5 lg:px-10">

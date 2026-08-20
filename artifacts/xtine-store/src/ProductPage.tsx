@@ -10,6 +10,7 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { loadProducts, fetchProductsFromAPI } from './data';
+import { Seo, productSchema } from './seo';
 import { calculateChargeAmount, toSlug } from './utils';
 import type { Product, CartEntry } from './types';
 
@@ -74,6 +75,12 @@ export default function ProductPage() {
   if (!product) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#09090f] text-white">
+        <Seo
+          title="Product Not Found | XtineCheats"
+          description="The requested XtineCheats product is unavailable."
+          path={`/${slug ?? ''}`}
+          noIndex
+        />
         <Gamepad2 size={64} className="text-[#1e1e2e]" strokeWidth={1} />
         <div className="text-center">
           <h1 className="text-2xl font-extrabold">Product not found</h1>
@@ -103,6 +110,12 @@ export default function ProductPage() {
 
   return (
     <div className="min-h-screen bg-[#09090f] text-white">
+      <Seo
+        title={`${product.name} Gaming Service | XtineCheats`}
+        description={`${product.description} Browse options and purchase through XtineCheats.`}
+        path={`/${toSlug(product.name)}`}
+        schema={productSchema(product)}
+      />
       {/* Navbar */}
       <header className="sticky top-0 z-50 border-b border-[#1e1e2e] bg-[#0c0c16]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-4 lg:px-10">
@@ -156,7 +169,7 @@ export default function ProductPage() {
             {product.image ? (
               <img
                 src={product.image}
-                alt={product.name}
+                alt={`${product.name} product artwork`}
                 className="absolute inset-0 h-full w-full object-cover opacity-90"
               />
             ) : (

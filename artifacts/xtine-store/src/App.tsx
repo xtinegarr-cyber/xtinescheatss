@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import heroCharacters from '@assets/hibana-hero-cropped-clean.png';
 import { loadProducts, saveProducts, fetchProductsFromAPI, pushProductsToAPI } from './data';
+import { Seo } from './seo';
 import AdminPanel from './AdminPanel';
 import {
   LoginModal,
@@ -301,6 +302,11 @@ function App() {
 
   return (
     <main className="noise min-h-[100dvh] overflow-x-hidden bg-[#09090f] text-white selection:bg-[#6C5CE7] selection:text-white">
+      <Seo
+        title="Gaming Services & Digital Products | XtineCheats"
+        description="Shop XtineCheats for game services, digital products, and in-game items for Arc Raiders, Rainbow Six Siege, Rust, and DonutSMP."
+        path="/"
+      />
 
       {/* ── HEADER ── */}
       <header className="relative z-50 border-b border-[#1e1e2e] bg-[#0c0c16]/80 backdrop-blur-xl">
@@ -519,18 +525,18 @@ function App() {
         <div className="absolute top-0 right-0 w-full md:w-[60%] h-full z-0 pointer-events-none opacity-40 md:opacity-100 overflow-hidden">
            <div className="absolute inset-0 bg-gradient-to-t from-[#09090f]/45 via-transparent to-transparent z-10" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#09090f] via-transparent to-transparent z-10" />
-           <img src={heroCharacters} alt="" className="absolute bottom-[11%] right-[2%] h-[78%] w-[72%] object-contain object-right-bottom opacity-100 mix-blend-screen" />
+           <img src={heroCharacters} alt="Hibana from Rainbow Six Siege in XtineCheats artwork" className="absolute bottom-[11%] right-[2%] h-[78%] w-[72%] object-contain object-right-bottom opacity-100 mix-blend-screen" />
         </div>
 
         <div className="relative z-10 mx-auto w-full max-w-[1400px] px-5 lg:px-10 py-20 pb-40">
           <div className="max-w-[700px] reveal">
             <h1 className="text-[52px] sm:text-[72px] lg:text-[92px] font-extrabold leading-[1.02] tracking-[-0.03em] text-white mb-6">
-              unfair advantage
+              premium gaming
               <br />
-              <span className="text-[#6C5CE7]">guaranteed.</span>
+              <span className="text-[#6C5CE7]">services &amp; items.</span>
             </h1>
             <p className="text-[16px] sm:text-[18px] text-[#a0a0b8] max-w-[480px] mb-10 leading-relaxed font-medium">
-              Get ahead with premium game services and digital goods.
+              Shop digital products and gaming services for Arc Raiders, Rainbow Six Siege, Rust, and DonutSMP.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <button onClick={scrollToCatalog} className="rounded-lg bg-[#6C5CE7] px-8 py-4 text-[15px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_30px_rgba(108,92,231,0.3)]">
@@ -791,7 +797,7 @@ function ProductCard({ product, index, favorite, onFavorite, onView }: {
       >
         <div className="absolute inset-0 bg-gradient-to-br from-[#13131e] to-[#0f0f18] z-0" />
         {product.image ? (
-          <img src={product.image} alt={product.name} className="absolute inset-0 h-full w-full object-cover z-0 opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+          <img src={product.image} alt={`${product.name} product artwork`} loading="lazy" className="absolute inset-0 h-full w-full object-cover z-0 opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
         ) : (
           <>
             <div className="absolute h-40 w-40 rounded-full bg-[#6C5CE7]/10 blur-3xl group-hover:bg-[#6C5CE7]/20 transition-colors duration-500 z-0" />
@@ -855,7 +861,7 @@ function ProductDetail({ product, onClose, onAdd }: {
               <div className="absolute inset-0 bg-gradient-to-br from-[#13131e] to-[#0f0f18] z-0" />
               <div className="absolute h-64 w-64 rounded-full bg-[#6C5CE7]/10 blur-3xl z-0" />
               {product.image ? (
-                <img src={product.image} alt={product.name} className="absolute inset-0 h-full w-full object-cover z-10 opacity-90" />
+                <img src={product.image} alt={`${product.name} product artwork`} className="absolute inset-0 h-full w-full object-cover z-10 opacity-90" />
               ) : (
                 <Gamepad2 size={120} strokeWidth={1} className="text-[#6C5CE7]/20 z-10" />
               )}
@@ -946,7 +952,7 @@ function CartDrawer({ cartProducts, subtotal, minimumOrderItems, onClose, onUpda
                 return (
                   <div key={cartKey} className={`flex gap-4 rounded-xl border bg-[#13131e] p-4 ${minimumOrderIssue ? 'border-amber-400/30' : 'border-[#1e1e2e]'}`}>
                     <div className="flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-lg bg-[#0f0f18] border border-[#1e1e2e] overflow-hidden">
-                      {product.image ? <img src={product.image} alt={product.name} className="h-full w-full object-cover" /> : <Gamepad2 size={32} strokeWidth={1.5} className="text-[#6C5CE7]/40" />}
+                      {product.image ? <img src={product.image} alt={`${product.name} product artwork`} className="h-full w-full object-cover" /> : <Gamepad2 size={32} strokeWidth={1.5} className="text-[#6C5CE7]/40" />}
                     </div>
                     <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
                       <div className="flex justify-between gap-2">
