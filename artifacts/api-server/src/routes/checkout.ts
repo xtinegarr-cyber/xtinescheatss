@@ -45,7 +45,7 @@ const checkoutCatalog: Record<string, CatalogProduct> = {
   },
   rust: {
     name: 'Rust',
-    durations: [{ label: '1 Day', priceCents: 699 }, { label: '3 Days', priceCents: 1499 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5599 }],
+    durations: [{ label: '1 Day', priceCents: 699 }, { label: '3 Days', priceCents: 1499 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5599 }, { label: 'Lifetime', priceCents: 24_900 }],
     options: [
       { name: 'Rust Account', unitLabel: 'account', unitPriceInThousandths: 5_750, minimumSubtotalCents: 0 },
     ],
