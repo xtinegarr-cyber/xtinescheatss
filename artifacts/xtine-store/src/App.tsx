@@ -361,7 +361,7 @@ function App() {
             </div>
 
             <button onClick={scrollToCatalog} className="transition-colors hover:text-white">Products</button>
-            <a href="https://discord.gg/TbED29s7sZ" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">Discord</a>
+            <a href="https://discord.gg/qXF9ErJJKY" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">Discord</a>
             <button onClick={() => document.getElementById('trust')?.scrollIntoView({ behavior: 'smooth' })} className="transition-colors hover:text-white">Contact Us</button>
           </nav>
 
@@ -547,7 +547,7 @@ function App() {
               <button onClick={scrollToCatalog} className="rounded-lg bg-[#6C5CE7] px-8 py-4 text-[15px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_30px_rgba(108,92,231,0.3)]">
                 Explore Products
               </button>
-              <a href="https://discord.gg/TbED29s7sZ" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-[#2a2a3a] bg-[#0c0c16]/50 backdrop-blur px-8 py-4 text-[15px] font-bold text-[#a0a0b8] transition-all hover:bg-[#1e1e2e] hover:text-white hover:border-[#3a3a4a]">
+              <a href="https://discord.gg/qXF9ErJJKY" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-[#2a2a3a] bg-[#0c0c16]/50 backdrop-blur px-8 py-4 text-[15px] font-bold text-[#a0a0b8] transition-all hover:bg-[#1e1e2e] hover:text-white hover:border-[#3a3a4a]">
                 Our Discord
               </a>
             </div>
