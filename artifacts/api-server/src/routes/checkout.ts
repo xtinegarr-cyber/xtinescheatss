@@ -39,6 +39,9 @@ const checkoutCatalog: Record<string, CatalogProduct> = {
   'rainbow-six-siege': {
     name: 'Rainbow Six Siege',
     durations: [{ label: '1 Day', priceCents: 499 }, { label: '3 Days', priceCents: 1299 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5899 }],
+    options: [
+      { name: 'Rainbow Six Siege Account', unitLabel: 'account', unitPriceInThousandths: 2_500, minimumSubtotalCents: 0 },
+    ],
   },
   rust: {
     name: 'Rust',

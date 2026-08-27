@@ -53,6 +53,17 @@ export const defaultProducts: Product[] = [
       { label: '7 Days', days: 7,  price: 28.99 },
       { label: '30 Days',days: 30, price: 58.99 },
     ],
+    purchaseType: 'mixed',
+    unitOptions: [
+      {
+        id: 'account',
+        name: 'Rainbow Six Siege Account',
+        unitLabel: 'account',
+        price: 2.50,
+        minimumSubtotal: 0,
+        description: 'Ranked ready, Level 50+. Full access account — email and password are changeable after purchase.',
+      },
+    ],
     note: '',
     tag: 'New',
     image: '/rainbow-six.png',
