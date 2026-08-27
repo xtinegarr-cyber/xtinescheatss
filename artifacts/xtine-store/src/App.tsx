@@ -59,8 +59,12 @@ const wallets: Record<string, string> = {
 type Category = 'Featured' | 'Items' | 'Services';
 type AuthModal = 'login' | 'signup' | null;
 
+function isUnitEntry(entry: CartEntry) {
+  return entry.optionIndex !== undefined;
+}
+
 function getProductPrice(product: Product, entry: CartEntry) {
-  if (product.purchaseType === 'unit') {
+  if (isUnitEntry(entry)) {
     return product.unitOptions?.[entry.optionIndex ?? 0]?.price ?? 0;
   }
   return product.durations[entry.durationIndex]?.price ?? product.durations[0]?.price ?? 0;
@@ -76,7 +80,7 @@ function getItemSubtotal(product: Product, entry: CartEntry) {
 
 function isBelowMinimum(product: Product, entry: CartEntry) {
   const unitOption = getUnitOption(product, entry);
-  return product.purchaseType === 'unit'
+  return isUnitEntry(entry)
     && Boolean(unitOption?.minimumSubtotal)
     && getItemSubtotal(product, entry) < (unitOption?.minimumSubtotal ?? 0);
 }
@@ -269,10 +273,10 @@ function App() {
         id: generateOrderId(),
         date: new Date().toISOString(),
         items: cartProducts.map(({ product, entry }) => ({
-          productName: product.purchaseType === 'unit'
+          productName: isUnitEntry(entry)
             ? `${product.name} — ${getUnitOption(product, entry)?.name ?? 'Item'}`
             : product.name,
-          duration: product.purchaseType === 'unit'
+          duration: isUnitEntry(entry)
             ? `${entry.qty.toLocaleString()} ${getUnitOption(product, entry)?.unitLabel ?? 'unit'}${entry.qty === 1 ? '' : 's'}`
             : product.durations[entry.durationIndex]?.label ?? '',
           price: getItemSubtotal(product, entry),
@@ -984,8 +988,8 @@ function CartDrawer({ cartProducts, subtotal, minimumOrderItems, onClose, onUpda
                     <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
                       <div className="flex justify-between gap-2">
                         <div>
-                          <p className="truncate text-[14px] font-bold text-white">{product.purchaseType === 'unit' ? `${product.name} — ${unitOption?.name}` : product.name}</p>
-                          <p className="mt-0.5 text-[11px] font-bold text-[#6C5CE7]">{product.purchaseType === 'unit' ? `$${getProductPrice(product, entry).toFixed(getProductPrice(product, entry) < 1 ? 3 : 2)} / ${unitOption?.unitLabel}` : duration?.label}</p>
+                          <p className="truncate text-[14px] font-bold text-white">{isUnitEntry(entry) ? `${product.name} — ${unitOption?.name}` : product.name}</p>
+                          <p className="mt-0.5 text-[11px] font-bold text-[#6C5CE7]">{isUnitEntry(entry) ? `$${getProductPrice(product, entry).toFixed(getProductPrice(product, entry) < 1 ? 3 : 2)} / ${unitOption?.unitLabel}` : duration?.label}</p>
                         </div>
                         <p className="text-[14px] font-bold text-[#8B7CF8]">${itemSubtotal.toFixed(2)}</p>
                       </div>
@@ -1056,8 +1060,8 @@ function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayme
     try {
       const items = cartProducts.map(({ product, entry }) => ({
         productId: product.id,
-        durationIndex: product.purchaseType === 'unit' ? undefined : entry.durationIndex,
-        optionIndex: product.purchaseType === 'unit' ? entry.optionIndex : undefined,
+        durationIndex: isUnitEntry(entry) ? undefined : entry.durationIndex,
+        optionIndex: isUnitEntry(entry) ? entry.optionIndex : undefined,
         qty: entry.qty,
       }));
       const { url } = await createStripeCheckoutSession(items);

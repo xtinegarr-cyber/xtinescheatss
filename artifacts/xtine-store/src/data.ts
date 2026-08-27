@@ -73,6 +73,17 @@ export const defaultProducts: Product[] = [
       { label: '7 Days', days: 7,  price: 28.99 },
       { label: '30 Days',days: 30, price: 55.99 },
     ],
+    purchaseType: 'mixed',
+    unitOptions: [
+      {
+        id: 'account',
+        name: 'Rust Account',
+        unitLabel: 'account',
+        price: 5.75,
+        minimumSubtotal: 0,
+        description: 'Full access Rust account. Email and password are changeable after purchase.',
+      },
+    ],
     note: '',
     tag: 'Hot',
     image: '/rust.png',

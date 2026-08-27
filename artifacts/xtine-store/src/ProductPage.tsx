@@ -39,6 +39,7 @@ export default function ProductPage() {
   const [selectedDuration, setSelectedDuration] = useState(0);
   const [selectedUnitOptionIndex, setSelectedUnitOptionIndex] = useState(0);
   const [unitQuantity, setUnitQuantity] = useState(1);
+  const [mode, setMode] = useState<'duration' | 'unit'>('duration');
   const [added, setAdded] = useState(false);
   const [cartCount, setCartCount] = useState(() =>
     Object.values(readCart()).reduce((s, e) => s + e.qty, 0)
@@ -53,18 +54,21 @@ export default function ProductPage() {
     .filter((p) => p.listed)
     .find((p) => toSlug(p.name) === slug);
 
+  const isMixed = product?.purchaseType === 'mixed';
+  const effectiveUnitMode = product?.purchaseType === 'unit' || (isMixed && mode === 'unit');
+
   const addToCart = () => {
     if (!product) return;
     const cart = readCart();
     const unitOption = product.unitOptions?.[selectedUnitOptionIndex];
-    const cartKey = product.purchaseType === 'unit' && unitOption
+    const cartKey = effectiveUnitMode && unitOption
       ? `${product.id}:${unitOption.id}`
       : product.id;
     const existing = cart[cartKey];
     cart[cartKey] = {
       durationIndex: selectedDuration,
-      optionIndex: product.purchaseType === 'unit' ? selectedUnitOptionIndex : undefined,
-      qty: (existing?.qty ?? 0) + (product.purchaseType === 'unit' ? unitQuantity : 1),
+      optionIndex: effectiveUnitMode ? selectedUnitOptionIndex : undefined,
+      qty: (existing?.qty ?? 0) + (effectiveUnitMode ? unitQuantity : 1),
     };
     writeCart(cart);
     setCartCount(Object.values(cart).reduce((s, e) => s + e.qty, 0));
@@ -94,7 +98,7 @@ export default function ProductPage() {
   }
 
   const chosen = product.durations[selectedDuration];
-  const isUnitProduct = product.purchaseType === 'unit';
+  const isUnitProduct = effectiveUnitMode;
   const unitOption = product.unitOptions?.[selectedUnitOptionIndex];
   const unitPrice = unitOption?.price ?? 0;
   const unitSubtotal = calculateChargeAmount(unitPrice, unitQuantity);
@@ -198,33 +202,67 @@ export default function ProductPage() {
 
             <p className="text-[15px] leading-relaxed text-[#a0a0b8]">{product.description}</p>
 
+            {isMixed && (
+              <div className="flex gap-1 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode('duration')}
+                  className={`flex-1 rounded-lg py-2.5 text-[12px] font-bold uppercase tracking-wider transition-all ${
+                    mode === 'duration'
+                      ? 'bg-[#6C5CE7] text-white shadow-[0_0_15px_rgba(108,92,231,0.3)]'
+                      : 'text-[#5a5a72] hover:text-[#a0a0b8]'
+                  }`}
+                >
+                  Cheat Service
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('unit')}
+                  className={`flex-1 rounded-lg py-2.5 text-[12px] font-bold uppercase tracking-wider transition-all ${
+                    mode === 'unit'
+                      ? 'bg-[#6C5CE7] text-white shadow-[0_0_15px_rgba(108,92,231,0.3)]'
+                      : 'text-[#5a5a72] hover:text-[#a0a0b8]'
+                  }`}
+                >
+                  Account
+                </button>
+              </div>
+            )}
+
             {isUnitProduct ? (
               <div className="space-y-4">
-                <div>
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">Choose an Item</p>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {product.unitOptions?.map((option, index) => (
-                      <button
-                        type="button"
-                        key={option.id}
-                        onClick={() => {
-                          setSelectedUnitOptionIndex(index);
-                          setUnitQuantity(1);
-                        }}
-                        className={`rounded-xl border p-3 text-left transition-all ${
-                          selectedUnitOptionIndex === index
-                            ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-[0_0_15px_rgba(108,92,231,0.15)]'
-                            : 'border-[#1e1e2e] bg-[#13131e] hover:border-[#3a3a4a]'
-                        }`}
-                      >
-                        <span className={`block text-[12px] font-bold ${selectedUnitOptionIndex === index ? 'text-white' : 'text-[#a0a0b8]'}`}>{option.name}</span>
-                        <span className={`mt-1 block text-[12px] font-extrabold ${selectedUnitOptionIndex === index ? 'text-[#8B7CF8]' : 'text-[#5a5a72]'}`}>
-                          ${option.price.toFixed(option.price < 1 ? 3 : 2)} / {option.unitLabel}
-                        </span>
-                      </button>
-                    ))}
+                {(product.unitOptions?.length ?? 0) > 1 && (
+                  <div>
+                    <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">Choose an Item</p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {product.unitOptions?.map((option, index) => (
+                        <button
+                          type="button"
+                          key={option.id}
+                          onClick={() => {
+                            setSelectedUnitOptionIndex(index);
+                            setUnitQuantity(1);
+                          }}
+                          className={`rounded-xl border p-3 text-left transition-all ${
+                            selectedUnitOptionIndex === index
+                              ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-[0_0_15px_rgba(108,92,231,0.15)]'
+                              : 'border-[#1e1e2e] bg-[#13131e] hover:border-[#3a3a4a]'
+                          }`}
+                        >
+                          <span className={`block text-[12px] font-bold ${selectedUnitOptionIndex === index ? 'text-white' : 'text-[#a0a0b8]'}`}>{option.name}</span>
+                          <span className={`mt-1 block text-[12px] font-extrabold ${selectedUnitOptionIndex === index ? 'text-[#8B7CF8]' : 'text-[#5a5a72]'}`}>
+                            ${option.price.toFixed(option.price < 1 ? 3 : 2)} / {option.unitLabel}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+                {unitOption?.description && (
+                  <p className="rounded-xl border border-[#1e1e2e] bg-[#13131e] p-3 text-[13px] leading-relaxed text-[#a0a0b8]">
+                    {unitOption.description}
+                  </p>
+                )}
                 <div className="mb-3 flex items-center justify-between gap-4">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">Quantity</p>
                   <p className="text-[13px] font-bold text-[#8B7CF8]">${unitPrice.toFixed(unitPrice < 1 ? 3 : 2)} / {unitOption?.unitLabel}</p>

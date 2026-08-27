@@ -10,47 +10,44 @@ const router = Router();
 const fulfillmentUrl = 'https://mega.nz/folder/KuAwiKDA#Vd7pqEQD0cuEnzfAvsuXFw.';
 const MAX_QUANTITY = 100_000;
 
-type CatalogProduct =
-  | {
-    kind: 'duration';
-    name: string;
-    durations: { label: string; priceCents: number }[];
-  }
-  | {
-    kind: 'unit';
-    name: string;
-    options: {
-      name: string;
-      unitLabel: string;
-      unitPriceInThousandths: number;
-      minimumSubtotalCents: number;
-    }[];
-  };
+type UnitCatalogOption = {
+  name: string;
+  unitLabel: string;
+  unitPriceInThousandths: number;
+  minimumSubtotalCents: number;
+};
+
+type CatalogProduct = {
+  name: string;
+  // Present when the product offers duration-based service plans.
+  durations?: { label: string; priceCents: number }[];
+  // Present when the product offers flat/unit-priced items (optionally
+  // alongside durations, e.g. Rust's cheat service + one-time accounts).
+  options?: UnitCatalogOption[];
+};
 
 // Stripe prices are derived exclusively from this server-owned catalog.
 const checkoutCatalog: Record<string, CatalogProduct> = {
   'arc-raiders': {
-    kind: 'duration',
     name: 'Arc Raiders',
     durations: [{ label: '1 Day', priceCents: 499 }, { label: '3 Days', priceCents: 1299 }, { label: '7 Days', priceCents: 1999 }, { label: '30 Days', priceCents: 3999 }],
   },
   'hwid-spoofer': {
-    kind: 'duration',
     name: 'HWID Spoofer',
     durations: [{ label: '1 Day', priceCents: 299 }, { label: '3 Days', priceCents: 599 }, { label: '7 Days', priceCents: 999 }, { label: '30 Days', priceCents: 1999 }],
   },
   'rainbow-six-siege': {
-    kind: 'duration',
     name: 'Rainbow Six Siege',
     durations: [{ label: '1 Day', priceCents: 499 }, { label: '3 Days', priceCents: 1299 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5899 }],
   },
   rust: {
-    kind: 'duration',
     name: 'Rust',
     durations: [{ label: '1 Day', priceCents: 699 }, { label: '3 Days', priceCents: 1499 }, { label: '7 Days', priceCents: 2899 }, { label: '30 Days', priceCents: 5599 }],
+    options: [
+      { name: 'Rust Account', unitLabel: 'account', unitPriceInThousandths: 5_750, minimumSubtotalCents: 0 },
+    ],
   },
   donutsmp: {
-    kind: 'unit',
     name: 'DonutSMP',
     options: [
       { name: 'In-Game Money', unitLabel: 'million', unitPriceInThousandths: 81, minimumSubtotalCents: 400 },
@@ -103,21 +100,25 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
         return;
       }
 
-      if (product.kind === 'unit') {
+      // Items with an optionIndex are flat/unit-priced purchases (e.g. DonutSMP
+      // items, Rust accounts); everything else is a duration-based plan.
+      if (item.optionIndex !== undefined) {
         const optionIndex = item.optionIndex;
         if (
-          typeof optionIndex !== 'number'
+          !product.options
+          || typeof optionIndex !== 'number'
           || !Number.isInteger(optionIndex)
           || optionIndex < 0
           || optionIndex >= product.options.length
         ) {
-          res.status(400).json({ error: 'Invalid DonutSMP item option' });
+          res.status(400).json({ error: 'Invalid item option' });
           return;
         }
 
         const option = product.options[optionIndex];
-        // The advertised $0.081 rate is stored as thousandths of a dollar.
-        // The combined quantity total is rounded once to Stripe's whole cents.
+        // Rates are stored as thousandths of a dollar so sub-cent unit prices
+        // (e.g. $0.081) stay exact. The combined quantity total is rounded
+        // once to Stripe's whole cents.
         const subtotalCents = Math.round((option.unitPriceInThousandths * item.qty) / 10);
         if (subtotalCents < option.minimumSubtotalCents) {
           res.status(400).json({
@@ -131,7 +132,7 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
             currency: 'usd',
             product_data: {
               name: `${product.name} — ${option.name} — ${item.qty.toLocaleString()} ${option.unitLabel}${item.qty === 1 ? '' : 's'}`,
-              description: 'DonutSMP item purchase',
+              description: `${product.name} item purchase`,
             },
             unit_amount: subtotalCents,
           },
@@ -142,7 +143,8 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
 
       const durationIndex = item.durationIndex;
       if (
-        typeof durationIndex !== 'number'
+        !product.durations
+        || typeof durationIndex !== 'number'
         || !Number.isInteger(durationIndex)
         || durationIndex < 0
         || durationIndex >= product.durations.length

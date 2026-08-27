@@ -16,6 +16,7 @@ export type UnitOption = {
   unitLabel: string;
   price: number;
   minimumSubtotal: number;
+  description?: string;
 };
 
 export type Product = {
@@ -24,7 +25,7 @@ export type Product = {
   game: string;
   category: 'Items' | 'Services';
   durations: DurationOption[];
-  purchaseType?: 'duration' | 'unit';
+  purchaseType?: 'duration' | 'unit' | 'mixed';
   unitOptions?: UnitOption[];
   note: string;
   tag: string;
