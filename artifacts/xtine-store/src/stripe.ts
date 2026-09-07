@@ -1,6 +1,6 @@
 // The deployed API artifact is mounted at /api. VITE_API_URL remains available
 // for an intentionally separate API deployment.
-export const API_BASE = import.meta.env.VITE_API_URL ?? '';
+export const API_BASE = import.meta.env.VITE_API_URL ?? 'https://workspaceapi-server-production-5721.up.railway.app';
 
 export type StripeLineItem = {
   productId: string;
