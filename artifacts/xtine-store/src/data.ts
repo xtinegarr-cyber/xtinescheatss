@@ -136,7 +136,7 @@ export const defaultProducts: Product[] = [
     ],
     note: 'Gamepasses & items',
     tag: 'Roblox',
-    image: '/roblox.svg',
+    image: '/roblox.png',
     description: 'Choose a Roblox gamepass or item, then follow the instructions in our Discord to claim your purchase.',
     eta: 'Manual delivery via Discord',
     type: 'Roblox',
