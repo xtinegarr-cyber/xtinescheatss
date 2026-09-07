@@ -232,30 +232,45 @@ export default function ProductPage() {
             {isUnitProduct ? (
               <div className="space-y-4">
                 {(product.unitOptions?.length ?? 0) > 1 && (
-                  <div>
-                    <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-[#5a5a72]">Choose an Item</p>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {product.unitOptions?.map((option, index) => (
-                        <button
-                          type="button"
-                          key={option.id}
-                          onClick={() => {
-                            setSelectedUnitOptionIndex(index);
-                            setUnitQuantity(1);
-                          }}
-                          className={`rounded-xl border p-3 text-left transition-all ${
-                            selectedUnitOptionIndex === index
-                              ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-[0_0_15px_rgba(108,92,231,0.15)]'
-                              : 'border-[#1e1e2e] bg-[#13131e] hover:border-[#3a3a4a]'
-                          }`}
-                        >
-                          <span className={`block text-[12px] font-bold ${selectedUnitOptionIndex === index ? 'text-white' : 'text-[#a0a0b8]'}`}>{option.name}</span>
-                          <span className={`mt-1 block text-[12px] font-extrabold ${selectedUnitOptionIndex === index ? 'text-[#8B7CF8]' : 'text-[#5a5a72]'}`}>
-                            ${option.price.toFixed(option.price < 1 ? 3 : 2)} / {option.unitLabel}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                  <div className="space-y-6">
+                    {Array.from(new Set(product.unitOptions?.map((option) => option.unitLabel))).map((unitLabel) => {
+                      const groupLabel = unitLabel === 'gamepass'
+                        ? 'Gamepasses'
+                        : unitLabel === 'item'
+                          ? 'Items'
+                          : `${unitLabel.charAt(0).toUpperCase()}${unitLabel.slice(1)}s`;
+
+                      return (
+                        <section key={unitLabel}>
+                          <div className="mb-3 flex items-center gap-3">
+                            <h3 className="text-[12px] font-extrabold uppercase tracking-wider text-white">{groupLabel}</h3>
+                            <div className="h-px flex-1 bg-[#1e1e2e]" />
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            {product.unitOptions?.map((option, index) => option.unitLabel === unitLabel && (
+                              <button
+                                type="button"
+                                key={option.id}
+                                onClick={() => {
+                                  setSelectedUnitOptionIndex(index);
+                                  setUnitQuantity(1);
+                                }}
+                                className={`rounded-xl border p-3 text-left transition-all ${
+                                  selectedUnitOptionIndex === index
+                                    ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-[0_0_15px_rgba(108,92,231,0.15)]'
+                                    : 'border-[#1e1e2e] bg-[#13131e] hover:border-[#3a3a4a]'
+                                }`}
+                              >
+                                <span className={`block text-[12px] font-bold ${selectedUnitOptionIndex === index ? 'text-white' : 'text-[#a0a0b8]'}`}>{option.name}</span>
+                                <span className={`mt-1 block text-[12px] font-extrabold ${selectedUnitOptionIndex === index ? 'text-[#8B7CF8]' : 'text-[#5a5a72]'}`}>
+                                  ${option.price.toFixed(option.price < 1 ? 3 : 2)} / {option.unitLabel}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </section>
+                      );
+                    })}
                   </div>
                 )}
                 {unitOption?.description && (
