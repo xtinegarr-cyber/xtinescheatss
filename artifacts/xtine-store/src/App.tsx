@@ -56,6 +56,8 @@ const wallets: Record<string, string> = {
   SOL: '3KWkVTQNWpHjsBzPRo4QZ7sVv3ZHeBg7rHzxzdRpiUiE',
 };
 
+const MINIMUM_PURCHASE = 2;
+
 type Category = 'Featured' | 'Items' | 'Services';
 type AuthModal = 'login' | 'signup' | null;
 
@@ -187,7 +189,7 @@ function App() {
   }, [listedProducts, category, query]);
 
   // ── Cart ──────────────────────────────────────────────────────────────────
-  const CART_KEY = 'xtine_cart_v2';
+  const CART_KEY = 'xtine_cart_v3';
   const [cart, setCart] = useState<Record<string, CartEntry>>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) ?? '{}') as Record<string, CartEntry>; }
     catch { return {}; }
@@ -218,6 +220,7 @@ function App() {
     return sum + getItemSubtotal(product, entry);
   }, 0);
   const minimumOrderItems = cartProducts.filter(({ product, entry }) => isBelowMinimum(product, entry));
+  const belowPurchaseMinimum = cartProducts.length > 0 && subtotal < MINIMUM_PURCHASE;
 
   const addToCart = (product: Product, durationIndex = 0, quantity = 1) => {
     const cartKey = product.purchaseType === 'unit' ? `${product.id}:0` : product.id;
@@ -266,7 +269,7 @@ function App() {
   };
 
   const handleCheckoutSubmit = () => {
-    if (minimumOrderItems.length) return;
+    if (minimumOrderItems.length || belowPurchaseMinimum) return;
     // Save order to user's history if logged in as a regular user
     if (currentUser && !currentUser.isAdmin) {
       const order: Order = {
@@ -710,10 +713,11 @@ function App() {
           cartProducts={cartProducts}
           subtotal={subtotal}
           minimumOrderItems={minimumOrderItems}
+          belowPurchaseMinimum={belowPurchaseMinimum}
           onClose={() => setCartOpen(false)}
           onUpdate={updateQuantity}
           onCheckout={() => {
-            if (minimumOrderItems.length) return;
+            if (minimumOrderItems.length || belowPurchaseMinimum) return;
             setCartOpen(false);
             setCheckout(true);
           }}
@@ -724,6 +728,7 @@ function App() {
           cartProducts={cartProducts}
           subtotal={subtotal}
           minimumOrderItems={minimumOrderItems}
+          belowPurchaseMinimum={belowPurchaseMinimum}
           payment={payment}
           setPayment={setPayment}
           txRef={txRef}
@@ -956,12 +961,13 @@ function ProductDetail({ product, onClose, onAdd }: {
 
 // ── CART DRAWER ───────────────────────────────────────────────────────────────
 
-function CartDrawer({ cartProducts, subtotal, minimumOrderItems, onClose, onUpdate, onCheckout }: {
+function CartDrawer({ cartProducts, subtotal, minimumOrderItems, belowPurchaseMinimum, onClose, onUpdate, onCheckout }: {
   cartProducts: { cartKey: string; product: Product; entry: CartEntry }[];
-  subtotal: number; minimumOrderItems: { cartKey: string; product: Product; entry: CartEntry }[]; onClose: () => void;
+  subtotal: number; minimumOrderItems: { cartKey: string; product: Product; entry: CartEntry }[]; belowPurchaseMinimum: boolean; onClose: () => void;
   onUpdate: (id: string, amount: number) => void; onCheckout: () => void;
 }) {
   const hasMinimumOrderIssue = minimumOrderItems.length > 0;
+  const hasCheckoutIssue = hasMinimumOrderIssue || belowPurchaseMinimum;
   return (
     <div className="fixed inset-0 z-[100] bg-[#09090f]/80 backdrop-blur-sm">
       <aside className="absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col border-l border-[#1e1e2e] bg-[#0f0f18] shadow-2xl">
@@ -1014,11 +1020,16 @@ function CartDrawer({ cartProducts, subtotal, minimumOrderItems, onClose, onUpda
                   Update the highlighted DonutSMP item quantities to meet their $4.00 minimum before checkout.
                 </p>
               )}
+              {belowPurchaseMinimum && (
+                <p className="mb-4 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2.5 text-center text-[12px] leading-relaxed text-amber-200">
+                  Minimum purchase is $2.00. Add ${(MINIMUM_PURCHASE - subtotal).toFixed(2)} more to continue.
+                </p>
+              )}
               <div className="mb-5 flex justify-between items-center">
                 <span className="text-[14px] font-medium text-[#a0a0b8]">Subtotal</span>
                 <span className="text-[18px] font-extrabold text-white">${subtotal.toFixed(2)} USD</span>
               </div>
-              <button disabled={hasMinimumOrderIssue} onClick={onCheckout} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
+              <button disabled={hasCheckoutIssue} onClick={onCheckout} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
                 Continue to Review <ArrowRight size={16} />
               </button>
               <p className="mt-4 text-center text-[11px] font-medium text-[#5a5a72]">Payment is reviewed manually before delivery.</p>
@@ -1039,9 +1050,9 @@ function CartDrawer({ cartProducts, subtotal, minimumOrderItems, onClose, onUpda
 
 // ── CHECKOUT ──────────────────────────────────────────────────────────────────
 
-function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayment, txRef, setTxRef, copied, copyWallet, submitted, onClose, onSubmit }: {
+function Checkout({ cartProducts, subtotal, minimumOrderItems, belowPurchaseMinimum, payment, setPayment, txRef, setTxRef, copied, copyWallet, submitted, onClose, onSubmit }: {
   cartProducts: { cartKey: string; product: Product; entry: CartEntry }[];
-  subtotal: number; minimumOrderItems: { cartKey: string; product: Product; entry: CartEntry }[]; payment: string; setPayment: (v: string) => void;
+  subtotal: number; minimumOrderItems: { cartKey: string; product: Product; entry: CartEntry }[]; belowPurchaseMinimum: boolean; payment: string; setPayment: (v: string) => void;
   txRef: string; setTxRef: (v: string) => void; copied: boolean;
   copyWallet: () => void; submitted: boolean; onClose: () => void; onSubmit: () => void;
 }) {
@@ -1049,8 +1060,13 @@ function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayme
   const [stripeLoading, setStripeLoading] = useState(false);
   const [stripeError, setStripeError] = useState('');
   const hasMinimumOrderIssue = minimumOrderItems.length > 0;
+  const hasCheckoutIssue = hasMinimumOrderIssue || belowPurchaseMinimum;
 
   const handleStripePay = async () => {
+    if (belowPurchaseMinimum) {
+      setStripeError('Minimum purchase is $2.00.');
+      return;
+    }
     if (hasMinimumOrderIssue) {
       setStripeError('Each DonutSMP item needs a $4.00 subtotal before checkout.');
       return;
@@ -1122,6 +1138,11 @@ function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayme
                   Each DonutSMP item must reach a $4.00 subtotal before payment. Return to your cart to update the highlighted item quantities.
             </p>
           )}
+          {belowPurchaseMinimum && (
+            <p className="mb-6 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-[13px] leading-relaxed text-amber-200">
+              Minimum purchase is $2.00. Return to your cart and add ${(MINIMUM_PURCHASE - subtotal).toFixed(2)} more.
+            </p>
+          )}
 
           {/* Payment method tabs */}
           <div className="mb-6 flex gap-2 rounded-xl border border-[#1e1e2e] bg-[#13131e] p-1">
@@ -1153,7 +1174,7 @@ function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayme
               )}
               <button
                 onClick={handleStripePay}
-                disabled={stripeLoading || hasMinimumOrderIssue}
+                disabled={stripeLoading || hasCheckoutIssue}
                 className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {stripeLoading ? (
@@ -1190,7 +1211,7 @@ function Checkout({ cartProducts, subtotal, minimumOrderItems, payment, setPayme
                 <label className="text-[13px] font-bold text-white block mb-3">Transaction Hash / Reference</label>
                 <input value={txRef} onChange={(e) => setTxRef(e.target.value)} placeholder="Paste your tx hash here..." className="w-full rounded-xl border border-[#1e1e2e] bg-[#13131e] px-5 py-3.5 text-[14px] text-white outline-none focus:border-[#6C5CE7] transition-colors placeholder:text-[#5a5a72] font-medium" />
               </div>
-              <button disabled={!txRef || hasMinimumOrderIssue} onClick={onSubmit} className="flex w-full items-center justify-center rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
+              <button disabled={!txRef || hasCheckoutIssue} onClick={onSubmit} className="flex w-full items-center justify-center rounded-xl bg-[#6C5CE7] py-4 text-[14px] font-bold text-white transition-all hover:bg-[#7B6FF0] hover:shadow-[0_0_20px_rgba(108,92,231,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#6C5CE7] disabled:hover:shadow-none">
                 Submit Payment Reference
               </button>
               <p className="text-center text-[11px] font-medium text-[#5a5a72]">Manual review · Delivery confirmed after verification</p>
