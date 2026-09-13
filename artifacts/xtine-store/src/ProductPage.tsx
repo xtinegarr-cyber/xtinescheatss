@@ -14,7 +14,7 @@ import { Seo, productSchema } from './seo';
 import { calculateChargeAmount, toSlug } from './utils';
 import type { Product, CartEntry } from './types';
 
-const CART_KEY = 'xtine_cart_v2';
+const CART_KEY = 'xtine_cart_v3';
 
 function readCart(): Record<string, CartEntry> {
   try {
