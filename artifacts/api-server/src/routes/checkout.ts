@@ -9,6 +9,7 @@ import { logger } from '../lib/logger';
 const router = Router();
 const fulfillmentUrl = 'https://mega.nz/folder/KuAwiKDA#Vd7pqEQD0cuEnzfAvsuXFw.';
 const MAX_QUANTITY = 100_000;
+const MINIMUM_PURCHASE_CENTS = 200;
 
 type UnitCatalogOption = {
   name: string;
@@ -53,26 +54,18 @@ const checkoutCatalog: Record<string, CatalogProduct> = {
   roblox: {
     name: 'Roblox',
     options: [
-      { name: 'Chromatic Gacha Box', unitLabel: 'gamepass', unitPriceInThousandths: 1_070, minimumSubtotalCents: 0 },
-      { name: '2x Mastery', unitLabel: 'gamepass', unitPriceInThousandths: 2_150, minimumSubtotalCents: 0 },
-      { name: '2x Boss Drops', unitLabel: 'gamepass', unitPriceInThousandths: 1_450, minimumSubtotalCents: 0 },
-      { name: 'Fruit Notifier', unitLabel: 'gamepass', unitPriceInThousandths: 12_850, minimumSubtotalCents: 0 },
-      { name: 'Fast Boats', unitLabel: 'gamepass', unitPriceInThousandths: 1_600, minimumSubtotalCents: 0 },
-      { name: '2x Money', unitLabel: 'gamepass', unitPriceInThousandths: 2_150, minimumSubtotalCents: 0 },
-      { name: 'Dark Blade', unitLabel: 'gamepass', unitPriceInThousandths: 5_800, minimumSubtotalCents: 0 },
-      { name: 'Perm Sand Fruit', unitLabel: 'item', unitPriceInThousandths: 6_150, minimumSubtotalCents: 0 },
-      { name: 'Kitsune Fruit', unitLabel: 'item', unitPriceInThousandths: 4_020, minimumSubtotalCents: 0 },
-      { name: 'Tiger Fruit', unitLabel: 'item', unitPriceInThousandths: 2_060, minimumSubtotalCents: 0 },
-      { name: 'Perm Gas Fruit', unitLabel: 'item', unitPriceInThousandths: 15_250, minimumSubtotalCents: 0 },
-      { name: 'Perm Ghost Fruit', unitLabel: 'item', unitPriceInThousandths: 7_890, minimumSubtotalCents: 0 },
-      { name: 'Perm Quake Fruit', unitLabel: 'item', unitPriceInThousandths: 10_890, minimumSubtotalCents: 0 },
-      { name: 'Perm Venom Fruit', unitLabel: 'item', unitPriceInThousandths: 16_890, minimumSubtotalCents: 0 },
-      { name: 'Perm Ice Fruit', unitLabel: 'item', unitPriceInThousandths: 5_100, minimumSubtotalCents: 0 },
-      { name: 'Perm Portal Fruit', unitLabel: 'item', unitPriceInThousandths: 12_750, minimumSubtotalCents: 0 },
-      { name: 'Perm Dragon Fruit', unitLabel: 'item', unitPriceInThousandths: 40_000, minimumSubtotalCents: 0 },
-      { name: 'Perm Flame Fruit', unitLabel: 'item', unitPriceInThousandths: 3_890, minimumSubtotalCents: 0 },
-      { name: 'Perm Rubber Fruit', unitLabel: 'item', unitPriceInThousandths: 7_900, minimumSubtotalCents: 0 },
-      { name: 'Perm Love Fruit', unitLabel: 'item', unitPriceInThousandths: 10_110, minimumSubtotalCents: 0 },
+      { name: 'Double XP', unitLabel: 'gamepass', unitPriceInThousandths: 1_500, minimumSubtotalCents: 0 },
+      { name: "Appraiser's Luck", unitLabel: 'gamepass', unitPriceInThousandths: 1_490, minimumSubtotalCents: 0 },
+      { name: 'Enchant Anywhere', unitLabel: 'gamepass', unitPriceInThousandths: 1_190, minimumSubtotalCents: 0 },
+      { name: 'Appraise Anywhere', unitLabel: 'gamepass', unitPriceInThousandths: 2_490, minimumSubtotalCents: 0 },
+      { name: 'Spawn Boat Anywhere', unitLabel: 'gamepass', unitPriceInThousandths: 1_490, minimumSubtotalCents: 0 },
+      { name: 'Sell Anywhere', unitLabel: 'gamepass', unitPriceInThousandths: 2_000, minimumSubtotalCents: 0 },
+      { name: 'Bobber Pack', unitLabel: 'gamepass', unitPriceInThousandths: 500, minimumSubtotalCents: 0 },
+      { name: 'Emote Pack', unitLabel: 'gamepass', unitPriceInThousandths: 500, minimumSubtotalCents: 0 },
+      { name: '500M', unitLabel: 'item', unitPriceInThousandths: 3_500, minimumSubtotalCents: 0 },
+      { name: '1B', unitLabel: 'item', unitPriceInThousandths: 5_990, minimumSubtotalCents: 0 },
+      { name: '10x Festive Relics', unitLabel: 'item', unitPriceInThousandths: 8_490, minimumSubtotalCents: 0 },
+      { name: '1x Tranquility Rod', unitLabel: 'item', unitPriceInThousandths: 3_990, minimumSubtotalCents: 0 },
     ],
   },
   donutsmp: {
@@ -110,6 +103,7 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
       };
       quantity: number;
     }[] = [];
+    let orderTotalCents = 0;
 
     for (const item of items) {
       if (
@@ -166,6 +160,7 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
           },
           quantity: 1,
         });
+        orderTotalCents += subtotalCents;
         continue;
       }
 
@@ -193,6 +188,12 @@ router.post('/checkout/create-session', async (req: Request, res: Response) => {
         },
         quantity: item.qty,
       });
+      orderTotalCents += duration.priceCents * item.qty;
+    }
+
+    if (orderTotalCents < MINIMUM_PURCHASE_CENTS) {
+      res.status(400).json({ error: 'Minimum purchase is $2.00' });
+      return;
     }
 
     const session = await getStripe().checkout.sessions.create({
