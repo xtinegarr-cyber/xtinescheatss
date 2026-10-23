@@ -5,7 +5,8 @@ const configuredApiUrl = import.meta.env.VITE_API_URL
   .split(/\s+/)[0]
   .replace(/\/$/, '');
 
-export const API_BASE = configuredApiUrl || 'https://workspaceapi-server-production-2994.up.railway.app';
+// Empty = this same site (the server that serves the store also runs the API).
+export const API_BASE = configuredApiUrl || '';
 
 export type StripeLineItem = {
   productId: string;

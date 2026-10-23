@@ -4,10 +4,10 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
+// The storefront doesn't need the database; only the (optional) shared
+// product list does. Without DATABASE_URL the server still starts.
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+  console.warn("DATABASE_URL is not set: the shared product list is off.");
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });

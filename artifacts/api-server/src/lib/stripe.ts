@@ -11,7 +11,7 @@ export function getStripe(): Stripe {
   if (!key) {
     throw new Error(
       'STRIPE_SECRET_KEY environment variable is not set. ' +
-      'Add it in your Railway service → Variables.'
+      'Add it in Coolify → your app → Environment Variables.'
     );
   }
   _stripe = new Stripe(key);

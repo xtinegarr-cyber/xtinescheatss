@@ -19,11 +19,11 @@ export function LoginModal({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const result = login(username.trim(), password);
+    const result = await login(username.trim(), password);
     setLoading(false);
     if (result.ok) {
       onSuccess(result.user);

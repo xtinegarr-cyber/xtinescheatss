@@ -1,3 +1,5 @@
+import { API_BASE } from './stripe';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type OrderItem = {
@@ -27,11 +29,9 @@ type StoredUser = {
   orders: Order[];
 };
 
-// ─── Admin credentials ────────────────────────────────────────────────────────
-// NOTE: These are visible in browser devtools because this is a frontend-only
-// app. Move to a real backend before taking the store to production.
+// ─── Admin ────────────────────────────────────────────────────────────────────
+// The admin password is checked by the server (ADMIN_KEY), never stored here.
 const ADMIN_USERNAME = 'Xtinegar';
-const ADMIN_PASSWORD = 'Rubeans2124!';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 const USERS_KEY = 'xtine_users_v1';
@@ -82,12 +82,22 @@ export type LoginResult =
   | { ok: true; user: AuthUser }
   | { ok: false; error: string };
 
-export function login(username: string, password: string): LoginResult {
-  // Admin shortcut
-  if (
-    username.toLowerCase() === ADMIN_USERNAME.toLowerCase() &&
-    password === ADMIN_PASSWORD
-  ) {
+export async function login(username: string, password: string): Promise<LoginResult> {
+  // Admin: the server checks the password.
+  if (username.toLowerCase() === ADMIN_USERNAME.toLowerCase()) {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        return { ok: false, error: data.error ?? 'Incorrect username or password.' };
+      }
+    } catch {
+      return { ok: false, error: 'Could not reach the server. Try again.' };
+    }
     const user: AuthUser = { username: ADMIN_USERNAME, isAdmin: true };
     saveSession(user);
     return { ok: true, user };

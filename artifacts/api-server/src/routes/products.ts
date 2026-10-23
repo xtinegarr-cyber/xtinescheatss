@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { eq, sql } from 'drizzle-orm';
 import { db, productsStoreTable } from '@workspace/db';
 import { logger } from '../lib/logger';
+import { isAdminKey } from './admin';
 
-const ADMIN_KEY = process.env.ADMIN_KEY ?? 'Rubeans2124!';
 const SINGLETON_ID = 'singleton';
 
 // Ensure the table exists on first boot (idempotent).
@@ -47,7 +47,7 @@ productsRouter.post('/products', async (req, res) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { adminKey, products } = req.body as { adminKey?: string; products?: any[] };
 
-  if (adminKey !== ADMIN_KEY) {
+  if (!isAdminKey(adminKey)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   if (!Array.isArray(products)) {
