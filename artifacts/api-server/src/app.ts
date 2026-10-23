@@ -59,6 +59,8 @@ const storeIndex = path.join(storeDir, "index.html");
 if (fs.existsSync(storeIndex)) {
   app.use(
     express.static(storeDir, {
+      // /rust serves rust.html: the product pages made at build time.
+      extensions: ["html"],
       setHeaders(res, file) {
         // Vite's hashed files never change; everything else is re-checked.
         const hashed = file.includes(`${path.sep}assets${path.sep}`);
