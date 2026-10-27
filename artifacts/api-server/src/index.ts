@@ -1,4 +1,5 @@
-import app from "./app";
+import app, { storeDir } from "./app";
+import { submitSitemapOnce } from "./lib/indexnow";
 import { logger } from "./lib/logger";
 
 // Coolify: set the resource's exposed port to this (3000 unless PORT is set).
@@ -17,4 +18,8 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // A minute after a deploy (once the new version is the one answering),
+  // tell Bing about the shop's pages. See lib/indexnow.ts.
+  setTimeout(() => void submitSitemapOnce(storeDir), 60_000).unref();
 });

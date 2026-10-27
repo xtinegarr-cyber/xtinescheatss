@@ -6,6 +6,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { handleStripeWebhook } from "./routes/checkout";
+import { INDEXNOW_KEY_PATH, indexNowKey } from "./lib/indexnow";
 
 const app: Express = express();
 
@@ -49,11 +50,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// The IndexNow key (see lib/indexnow.ts): search engines read it to check
+// that the shop's "these pages changed" messages really come from here.
+app.get(INDEXNOW_KEY_PATH, (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.type("text/plain").send(indexNowKey());
+});
+
 // ── Storefront ────────────────────────────────────────────────────────────────
 // The built store (artifacts/xtine-store) is served by this same server, so
 // the whole site runs as one app on one domain. Without a build (local API
 // development) only the API runs.
-const storeDir = path.resolve(process.env.STORE_DIR ?? "artifacts/xtine-store/dist/public");
+export const storeDir = path.resolve(process.env.STORE_DIR ?? "artifacts/xtine-store/dist/public");
 const storeIndex = path.join(storeDir, "index.html");
 
 if (fs.existsSync(storeIndex)) {
