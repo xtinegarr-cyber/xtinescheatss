@@ -7,7 +7,7 @@ import { getStripe } from '../lib/stripe';
 import { logger } from '../lib/logger';
 
 const router = Router();
-const fulfillmentUrl = 'https://mega.nz/folder/KuAwiKDA#Vd7pqEQD0cuEnzfAvsuXFw.';
+const fulfillmentUrl = 'https://mega.nz/folder/tIcXWK6L#x6m-smQ0H4P4DZUWzYtVNg.';
 const MAX_QUANTITY = 100_000;
 const MINIMUM_PURCHASE_CENTS = 200;
 
